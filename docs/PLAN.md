@@ -78,8 +78,25 @@ Reuse as-is: `pvr2-renderer`, `sprite-client`, `sprite-gpu`, `transport`. Extrac
 - **Phase 3 — Live mode.** `oracle_query.py` tail-WS + the `:7211` frame step/scrub channel.
 - **Phase 4 — Polish.** Struct inspector, ASMTRACE pen overlay, graceful no-art degradation, bake tab.
 
-## Open items to confirm before Phase 1
-1. The exact **fork branch/commit** the submodule pins (prod source is ahead of git — reconcile first).
+## Open items
+1. ~~The exact fork branch/commit the submodule pins.~~ **RESOLVED:** submodule pins
+   `https://github.com/t3chnicallyinclined/maplecast-flycast.git` @ **`3cfcf0d03`** (branch
+   `feat/render-replica-live`). The Oracle hook is committed there (last touched `22394e6ed`), clean.
+   This is **ahead of prod** (`_prod_deployed` snapshot @ `483d064c2`) but carries the complete hook +
+   the render-replica-live feed. (The earlier memory note's `dc2ef71`/`render-replica-experiment` is stale.)
 2. `oracle_query.py` is a **consolidation** of `_oracle/*.py`, not a copy — confirm the source scripts.
 3. Whether a GDI/disc extractor exists for the fully-offline decode path, or if live-capture is the
    only ROM→assets route on day one.
+
+## Linked-view wire add (OBJS `node_base`) — a PATCH, not a prod commit
+The linked view needs each on-screen object's RAM **node base** to draw its `[N, 0x1D0]` memory band.
+The OBJS wire **already carries `owner_slot`** (the color key — `maplecast_gamestate.h:211-212`), so the
+only addition is **`node_base (u32)`**. Scope (author as `patch/0002-objs-node-base.patch` applied to the
+submodule, consistent with the hook patch — NOT a commit to prod maplecast):
+- `core/network/maplecast_gamestate.h` — add `uint32_t node_base;` to the DrawnObj struct (~line 130).
+- `core/network/maplecast_gamestate.cpp` — populate `out[n].node_base = node;` in the three readers
+  (`readAllDrawn` ~414, `readObjectsWalk` ~334, legacy ~611 uses `a-0x18`); append to `writeObjects` (~748).
+- `core/network/maplecast_mirror.cpp` — append `node_base` (4B) to the browser OBJS record (~2384); bump stride.
+- **client parser** — the Oracle dashboard's own `sprite-client.onOBJS` reads the new field (stride-detected).
+Additive (append at end) so old parsers still stride-detect. **Needs a build + deploy + visual check
+before trust** (a wire change) — implement when the live feed lands, with verification.
