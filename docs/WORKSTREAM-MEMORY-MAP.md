@@ -13,12 +13,20 @@ dependency + risk, **not** time estimates.
 | **State-sync full blobs** (port 7102) | **FREE** | `core/network/maplecast_state_sync.cpp` `broadcastFreshState()` | late-join / baseline, not deltas |
 | **Main-RAM dirty pages** (0x0C…, 16 MB) | **BUILD** (machinery exists) | skipped in `initRegions()`; but `core/hw/mem/mem_watch.h` `RamWatcher`/`memwatch::writeAccess` already page-protects RAM for GGPO | mirror the VRAM shadow+memcmp, OR wire `RamWatcher` → per-frame dirty set |
 | **ROM/data-access flashes** | **CHEAP** (reuse hooks) | decode hooks `DECODETRACE` @ `0x8C03552A`/`0x8C0354C0`, `PARTDUMP` | flash the GFX/PLDAT source region on a decode burst |
-| **Access-type read/write/fetch by address** | **DEFER** (expensive) | none — page-protect is write-only/4KB; dynarec not instrumented | future "record-then-scrub" mode only |
+| **WRITE activity by page** | **CHEAP / LIVE** | `core/hw/mem/mem_watch.h` `RamWatcher` page-protect — fault-driven, already runs live for GGPO | live write-heat, no per-op tax |
+| **READ attribution by address** | **DEFER** (volume-bound) | none — instrumenting every load = ~millions of ops/frame | per-address *read* tracking only; sample or record-then-scrub |
 
-**Verdict:** the core "what changed this frame" view is **free for VRAM today** and a **small, well-patterned
-add for main RAM** (reuse `RamWatcher` or clone the VRAM shadow loop). Value + baseline are free. Semantic
-labels are a static `re_kb` overlay (zero runtime cost). Full access-type tracking is the only expensive
-piece and is explicitly deferred.
+> **The expensive thing is granularity, not "live."** ASMTRACE and the Oracle hooks already run on the live
+> game fine because they fire at **one bounded PC** (~tens of times/frame). The dirty-page diff is the same
+> class of cheap-live mechanism (it IS the 60fps TA mirror). Writes are cheap too (page-fault driven). The
+> ONLY expensive capture is **per-address reads** — because that's every load instruction (~millions/frame),
+> not because it's live. And this is a **dev/RE tool gated OFF for prod**, so even a 16 MB/frame memcmp is
+> fine on a dev box.
+
+**Verdict:** the whole heat/value/write-activity/ROM-flash/semantic view runs **live and cheap** — VRAM is
+free today, main-RAM write-heat is a small `RamWatcher`-backed add, baseline + value are free, labels are a
+static `re_kb` overlay. The **only** deferred piece is **per-address read attribution** (volume-bound; do it
+by sampling or record-then-scrub).
 
 ## Data-feed architecture
 
@@ -84,8 +92,17 @@ Two wire modes (env/handshake-selected):
    The "paint by meaning" view; the un-RE'd frontier becomes visible.
 4. **M4 — Interactive RE loop.** C4 interactions + D3 click-to-label + A4 ROM-access flashes +
    move-reachability tint.
-5. **M5 (future) — Access-type.** Read/write/fetch tracking via dynarec instrumentation, "record-then-
-   scrub" offline mode. *Deferred — high overhead.*
+5. **M5 (future) — per-address READ attribution.** Volume-bound (every load ~millions/frame); do it by
+   sampling or a "record-then-scrub" offline mode. NOTE: *writes* and the entire heat view are live-cheap
+   and land in M1–M2 — only per-address *reads* are deferred here.
+
+## MVP (M1) approach
+Build `web/panels/memmap-panel.mjs` as a **self-contained module with a pluggable data source**, driven
+first by a **synthetic source** (simulated per-frame dirty pages) so it runs in a browser with **zero
+emulator**. Page granularity (4 KB), linear row-major layout, **Canvas2D** heat render with decay, hover →
+address + value. Known regions (char structs, globals, object pool, decode scratch) tinted from the memory
+map so structure is visible immediately. The real dirty-page source (the wire feed) plugs into the same
+source interface later; WebGPU + Hilbert layout are the scale-up after the concept is proven.
 
 ## Risks / open items
 - **Main-RAM diff cost.** Full 16 MB memcmp/frame is heavy; prefer `RamWatcher` page-protect (writes only,

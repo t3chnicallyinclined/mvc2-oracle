@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MvC2 Oracle — Memory Map (M1)</title>
+<style>
+  :root { --bg:#0d0e12; --panel:#15171d; --ink:#d7dae2; --dim:#7f8593; --line:#262a33; --hot:#ffe878; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; }
+  header h1 { font-size:14px; margin:0; letter-spacing:.5px; }
+  header .sub { color:var(--dim); font-size:12px; }
+  .wrap { display:flex; gap:18px; padding:18px; align-items:flex-start; flex-wrap:wrap; }
+  canvas { image-rendering:pixelated; border:1px solid var(--line); background:#000; cursor:crosshair; }
+  aside { min-width:300px; max-width:360px; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 8px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  button { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; font:inherit; }
+  button:hover { background:#2c313e; }
+  input[type=range] { width:140px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; }
+  .kv b { color:var(--dim); font-weight:normal; }
+  .kv span { color:var(--ink); }
+  .hot { color:var(--hot); }
+  .legend { display:flex; flex-direction:column; gap:5px; }
+  .legend .item { display:flex; gap:8px; align-items:center; }
+  .sw { width:14px; height:14px; border-radius:3px; border:1px solid #0006; }
+  .framen { font-variant-numeric:tabular-nums; color:var(--hot); }
+</style>
+</head>
+<body>
+<header>
+  <h1>MvC2 ORACLE · MEMORY MAP</h1>
+  <span class="sub">M1 — write-activity radar · 16&nbsp;MB main RAM @ 4&nbsp;KB/page · synthetic source (no emulator)</span>
+</header>
+
+<div class="wrap">
+  <canvas id="map" width="512" height="512"></canvas>
+
+  <aside>
+    <div class="card">
+      <h2>Transport</h2>
+      <div class="row">
+        <button id="play">⏸ Pause</button>
+        <button id="step">⏭ Step</button>
+        <span>frame <span id="frame" class="framen">0</span></span>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label>decay <input id="decay" type="range" min="50" max="99" value="90"></label>
+        <span id="decayv" class="dim">0.90</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Hover</h2>
+      <div class="kv" id="hover">
+        <b>page</b><span>—</span>
+        <b>address</b><span>—</span>
+        <b>region</b><span>—</span>
+        <b>heat</b><span>—</span>
+        <b>writes</b><span>—</span>
+        <b>last write</b><span>—</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Regions</h2>
+      <div class="legend" id="legend"></div>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+  import { MemMap, REGIONS, PAGE } from './panels/memmap-panel.mjs?v=1';
+  import { SyntheticSource } from './memmap-source-synthetic.mjs?v=1';
+
+  const canvas = document.getElementById('map');
+  const map = new MemMap(canvas, { decay: 0.90 });
+  const src = new SyntheticSource();
+  map.setSource(src);
+
+  // --- transport ---
+  let playing = true;
+  const frameEl = document.getElementById('frame');
+  const playBtn = document.getElementById('play');
+  playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? '⏸ Pause' : '▶ Play'; };
+  document.getElementById('step').onclick = () => { src.advance(); frameEl.textContent = src.frame; };
+  const decay = document.getElementById('decay'), decayv = document.getElementById('decayv');
+  decay.oninput = () => { const d = decay.value / 100; map.setDecay(d); decayv.textContent = d.toFixed(2); };
+
+  function loop() {
+    if (playing) { src.advance(); frameEl.textContent = src.frame; }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // --- hover ---
+  const hv = document.getElementById('hover').querySelectorAll('span');
+  const hex = (n) => '0x' + (n >>> 0).toString(16).toUpperCase().padStart(8, '0');
+  canvas.addEventListener('mousemove', (e) => {
+    const info = map.info(map.pageAt(e.clientX, e.clientY));
+    if (!info) return;
+    hv[0].textContent = info.page;
+    hv[1].textContent = `${hex(info.addrStart)} – ${hex(info.addrEnd)}`;
+    hv[2].textContent = info.region;
+    hv[3].textContent = info.heat.toFixed(2);
+    hv[3].className = info.heat > 0.5 ? 'hot' : '';
+    hv[4].textContent = info.writeCount.toLocaleString();
+    hv[5].textContent = info.lastWrite < 0 ? 'never' : `frame ${info.lastWrite}`;
+  });
+
+  // --- legend ---
+  const leg = document.getElementById('legend');
+  for (const r of REGIONS) {
+    const item = document.createElement('div'); item.className = 'item';
+    const sw = document.createElement('div'); sw.className = 'sw';
+    sw.style.background = `rgb(${r.rgb[0]},${r.rgb[1]},${r.rgb[2]})`;
+    const lbl = document.createElement('span'); lbl.textContent = r.name;
+    item.append(sw, lbl); leg.append(item);
+  }
+  const u = document.createElement('div'); u.className = 'item';
+  const usw = document.createElement('div'); usw.className = 'sw'; usw.style.background = 'rgb(42,44,54)';
+  const ul = document.createElement('span'); ul.textContent = 'unknown / unlabeled'; ul.style.color = 'var(--dim)';
+  u.append(usw, ul); leg.append(u);
+</script>
+</body>
+</html>
