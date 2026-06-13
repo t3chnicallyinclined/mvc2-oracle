@@ -1,0 +1,8 @@
+USE NS re DB kb;
+UPSERT finding:objs_effect_blend_gap SET
+  status = "resolved",
+  confidence = "high",
+  date = "2026-06-11",
+  statement = "OBJS EFFECT BLEND GAP (G2) RESOLVED 2026-06-11 source-only rebuild pending parent. RE: PVR blend src/dst factors selected deep in bank12 PVR submit from cell TSP word (src=(tsp>>29)&7 dst=(tsp>>26)&7 CHARQ-captured recBase+0x14); submit does NOT run on lean RAM-walk OBJS path. NO per-object blend byte in pool node (readAllDrawn fields category+0x03 xflip+0x130 GFX+0x15C extras+0x178 hold no list-type) so option-a fails; cell TSP option-b is true source but needs submit math. CHOSEN option-c faithful+RAM-derivable: per-category dispatch loc_8c0301f6 bank03:191-226 branches {0x05,0x06,0x0B,0x0C,0x0D,0x01}=body/cape vs {0x07,0x08,0x09}=projectile/effect; master order loc_8c0305d8 bank03:733; is_effect (GFX in Effect Poly 0x0CED0000) = proven additive signal (reference_mvc2_effects_bank). computeObjectBlend: is_effect=>2 additive, body/cape=>0 opaque, else=>1 alpha. 1 byte {0=PT 1=alpha 2=additive}. IMPL append-only byte-exact: gamestate.h ObjectState+=blend OBJF_REC_SIZE 15->16; gamestate.cpp 3 readers+serialize/deserialize; mirror.cpp OBJS stride 13->14; sprite-client.mjs onOBJS 14B maps listType->blend nibble (2->0x11 1->0x45 0->0x00). relay opaque-forwards OBJF; wasm untouched; GSTA 376 untouched. contribution_candidate.";
+RELATE finding:objs_effect_blend_gap->cites->routine:loc_8c0301f6 SET note = "per-category render-path selector bank03:191-226";
+RELATE finding:objs_effect_blend_gap->cites->routine:loc_8c0305d8 SET note = "master back-to-front category draw order bank03:733";

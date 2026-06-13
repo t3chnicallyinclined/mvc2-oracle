@@ -1,0 +1,20 @@
+{
+  "name": "render-replica-poc",
+  "version": "0.1.0",
+  "description": "Headless WebGPU harness: TA buffer + VRAM + pvr_regs -> ta-parser.mjs + pvr2-renderer.mjs -> PNG",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "render": "node render_ta.mjs",
+    "diff": "node diff_png.mjs",
+    "make-synth": "node make_synthetic_rec.mjs ../../_ryu_capture/mc_render_rec_synth.bin 60 4",
+    "make-gt": "node make_synthetic_rec.mjs --gt ../../_ryu_capture/mc_render_rec_gt.bin 12 4",
+    "play-synth": "node play_synthetic_rec.mjs ../../_ryu_capture/mc_render_rec_synth.bin",
+    "shot-replay": "node shot_replay.mjs http://localhost:8099 http://localhost:8099/_ryu_capture/mc_render_rec_synth.bin"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "puppeteer": "^25.1.0",
+    "webgpu": "^0.4.0"
+  }
+}

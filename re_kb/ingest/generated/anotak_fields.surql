@@ -1,0 +1,38 @@
+USE NS re DB kb;
+
+UPSERT source:anotak_possible_anim SET kind='anotak', ref='https://zachd.com/mvc2/data/anotak/possible_anim.html', note='anotak animation field-semantics dictionary (per-field value enums).';
+
+UPSERT dataformat:anim_animflags SET name='AnimFlags', kind='anim_field', value_count=8, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_AnimFlags.html', note='[needs-curation] anotak animation field \'AnimFlags\'; values: ContinuesThroughHitstop=0x80, Unknown02=0x02, Unknown01=0x01, Unknown10=0x10. (src: anotak/possible_anim)';
+RELATE dataformat:anim_animflags->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_effecttrigger SET name='EffectTrigger', kind='anim_field', value_count=116, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_EffectTrigger.html', note='[needs-curation] anotak animation field \'EffectTrigger\'; values: 1=0x01, 128=0x80, 255=0xFF, 2=0x02. (src: anotak/possible_anim)';
+RELATE dataformat:anim_effecttrigger->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_duration SET name='Duration', kind='anim_field', value_count=61, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_Duration.html', note='[needs-curation] anotak animation field \'Duration\'; values: 3=0x03, 6=0x06, 4=0x04, 8=0x08. (src: anotak/possible_anim)';
+RELATE dataformat:anim_duration->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_ender SET name='Ender', kind='anim_field', value_count=4, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_Ender.html', note='[needs-curation] anotak animation field \'Ender\'; values: 128=0x80, 255=0xFF, 143=0x8F, 129=0x81. (src: anotak/possible_anim)';
+RELATE dataformat:anim_ender->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk06 SET name='unk06', kind='anim_field', value_count=1, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk06.html', note='[needs-curation] anotak animation field \'unk06\'; values: 255=0xFF. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk06->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk07 SET name='unk07', kind='anim_field', value_count=1, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk07.html', note='[needs-curation] anotak animation field \'unk07\'; values: 255=0xFF. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk07->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_airbornelaunchangle SET name='AirborneLaunchAngle', kind='anim_field', value_count=17, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_AirborneLaunchAngle.html', note='[needs-curation] anotak animation field \'AirborneLaunchAngle\'; values: 128=0x80, 48=0x30, 160=0xA0, 23=0x17. (src: anotak/possible_anim)';
+RELATE dataformat:anim_airbornelaunchangle->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_airbornelaunchspeed SET name='AirborneLaunchSpeed', kind='anim_field', value_count=189, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_AirborneLaunchSpeed.html', note='[needs-curation] anotak animation field \'AirborneLaunchSpeed\'; values: 32=0x20, 64=0x40, 120=0x78, 21=0x15. (src: anotak/possible_anim)';
+RELATE dataformat:anim_airbornelaunchspeed->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_proximityblock SET name='ProximityBlock', kind='anim_field', value_count=84, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_ProximityBlock.html', note='[needs-curation] anotak animation field \'ProximityBlock\'; values: 128=0x80, 64=0x40, 135=0x87, 7=0x07. (src: anotak/possible_anim)';
+RELATE dataformat:anim_proximityblock->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk0b SET name='unk0b', kind='anim_field', value_count=164, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk0b.html', note='[needs-curation] anotak animation field \'unk0b\'; values: 81=0x51, 82=0x52, 83=0x53, 88=0x58. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk0b->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_soundfx SET name='SoundFX', kind='anim_field', value_count=85, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_SoundFX.html', note='[needs-curation] anotak animation field \'SoundFX\'; values: 4=0x04, 5=0x05, 10=0x0A, 13=0x0D. (src: anotak/possible_anim)';
+RELATE dataformat:anim_soundfx->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk0d SET name='unk0d', kind='anim_field', value_count=20, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk0d.html', note='[needs-curation] anotak animation field \'unk0d\'; values: 1=0x01, 2=0x02, 3=0x03, 4=0x04. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk0d->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk0e SET name='unk0e', kind='anim_field', value_count=2, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk0e.html', note='[needs-curation] anotak animation field \'unk0e\'; values: 128=0x80, 64=0x40. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk0e->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk0f SET name='unk0f', kind='anim_field', value_count=12, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk0f.html', note='[needs-curation] anotak animation field \'unk0f\'; values: 1=0x01, 5=0x05, 4=0x04, 22=0x16. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk0f->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk10 SET name='unk10', kind='anim_field', value_count=255, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk10.html', note='[needs-curation] anotak animation field \'unk10\'; values: 5=0x05, 2=0x02, 3=0x03, 4=0x04. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk10->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_renderextra SET name='RenderExtra', kind='anim_field', value_count=120, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_RenderExtra.html', note='[needs-curation] anotak animation field \'RenderExtra\'; values: 3=0x03, 4=0x04, 5=0x05, 6=0x06. (src: anotak/possible_anim)';
+RELATE dataformat:anim_renderextra->cites->source:anotak_possible_anim;
+UPSERT dataformat:anim_unk14 SET name='unk14', kind='anim_field', value_count=0, source_url='https://zachd.com/mvc2/data/anotak/possible_anim_unk14.html', note='[needs-curation] anotak animation field \'unk14\'. (src: anotak/possible_anim)';
+RELATE dataformat:anim_unk14->cites->source:anotak_possible_anim;

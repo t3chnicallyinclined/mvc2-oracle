@@ -57,6 +57,12 @@ __pycache__/
 # --- re_kb store (rebuildable from the *.surql seeds) ---
 re_kb_data/
 
+# --- re_kb ingest heavy intermediates (rebuildable: anotak_crawl.py + parse) ---
+# keep the ingest scripts + ingest/generated/ (the committed surql seeds); drop the bulk.
+re_kb/ingest/cache/
+re_kb/ingest/data/
+re_kb/ingest/__pycache__/
+
 # --- editor / OS ---
 .DS_Store
 .vscode/

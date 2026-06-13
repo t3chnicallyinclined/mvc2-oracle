@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FLY="$ROOT/extern/flycast"
 BUILD="$FLY/build/headless"
 
-"$ROOT/scripts/apply-hook.sh"
+"$ROOT/scripts/apply-hook.sh"   # verify the fork submodule carries the hook (no patch needed)
 
 echo "[build] configuring headless (MAPLECAST_HEADLESS=ON)"
 cmake -S "$FLY" -B "$BUILD" -DMAPLECAST_HEADLESS=ON -DCMAKE_BUILD_TYPE=Release
