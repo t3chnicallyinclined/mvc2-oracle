@@ -45,13 +45,21 @@
     </div>
     <div class="card">
       <h2>Decode preview — <span id="psel" class="dim">click a character</span></h2>
-      <canvas id="preview" width="300" height="180"></canvas>
+      <canvas id="preview" width="360" height="420"></canvas>
       <div class="row" style="margin-top:6px">
         <select id="groupsel" title="animation group"></select>
         <select id="subsel" title="sub-animation"></select>
         <button id="anim" title="play this animation">▶</button>
         <button id="cap" title="replay captured history">↺ capture</button>
       </div>
+      <div class="row" style="margin-top:4px">
+        <span class="dim" style="font-size:11px">export:</span>
+        <button id="exgif" title="animated GIF">GIF</button>
+        <button id="exwebm" title="WebM video">WebM</button>
+        <button id="exsheet" title="PNG spritesheet + JSON">sheet</button>
+      </div>
+      <div class="dim" style="font-size:11px; margin-top:6px">controls (select a char): <b>A/D</b> walk · <b>W</b> jump · <b>S</b> crouch · <b>J/K/L</b> punches · <b>U/I/O</b> kicks · <b>F</b> special</div>
+      <div id="movenote" class="dim" style="font-size:11px; min-height:14px"></div>
       <div id="hovernote" style="margin-top:6px">hover a struct cell for its label</div>
     </div>
     <div class="card">
@@ -64,7 +72,8 @@
 <script type="module">
   import { StructPanel, SLOT_COLORS, SLOT_NAMES, SLOT_BASES } from './panels/struct-panel.mjs?v=2';
   import { Inspector } from './panels/inspector.mjs?v=1';
-  import { SpritePreview } from './panels/sprite-preview.mjs?v=1';
+  import { SpritePreview } from './panels/sprite-preview.mjs?v=2';
+  import { exportGIF, exportWebM, exportSheet } from './panels/anim-export.mjs?v=1';
   import { LinkedSyntheticSource } from './linked-source-synthetic.mjs?v=3';
 
   const insp = await Inspector.load('./labels.json?v=1');
@@ -135,6 +144,28 @@
   groupsel.onchange = populateSubs; subsel.onchange = playSelected;
   document.getElementById('anim').onclick = playSelected;
   document.getElementById('cap').onclick = () => { if (selected >= 0) preview.replay(lastFrame.slots[selected].cid, src.history(selected), { charName: SLOT_NAMES[selected] }, 12); };
+
+  // --- export the selected animation (GIF / WebM / spritesheet) ---
+  const curCells = () => curCat && curCat.groups[groupsel.value]?.subanims[+subsel.value]?.cells;
+  const exName = (ext) => `PL${HEX2(curCid)}_g${groupsel.value}_s${subsel.value}.${ext}`;
+  document.getElementById('exgif').onclick = async () => { const cells = curCells(); if (cells) exportGIF(await preview.captureAnim(curCid, cells), exName('gif')); };
+  document.getElementById('exsheet').onclick = async () => { const cells = curCells(); if (cells) exportSheet(await preview.captureAnim(curCid, cells), `PL${HEX2(curCid)}_g${groupsel.value}_s${subsel.value}`); };
+  document.getElementById('exwebm').onclick = () => { const cells = curCells(); if (!cells) return; playSelected(); const ms = cells.reduce((a, c) => a + Math.max(1, c.duration), 0) * 1000 / 60; exportWebM(preview.canvas, ms + 150, exName('webm')); };
+
+  // --- controllable puppet: keys -> animation groups (groups 0-17 consistent across chars;
+  //     group 21 special is per-char — Ryu's = Hadouken). Plays the mapped group/sub-anim. ---
+  const KEYMAP = { a:[0,0], d:[0,1], w:[1,0], s:[3,0], j:[7,0], k:[7,1], l:[7,2], u:[8,0], i:[8,1], o:[8,2], g:[9,0], h:[10,0], f:[21,2], ' ':[21,0] };
+  const movenote = document.getElementById('movenote');
+  window.addEventListener('keydown', (e) => {
+    if (selected < 0 || !curCat) return;
+    const m = KEYMAP[e.key.toLowerCase()]; if (!m) return;
+    const grp = curCat.groups[String(m[0])]; const sub = grp?.subanims[m[1]];
+    if (!sub) { movenote.textContent = `(no group ${m[0]} for ${curCat.name})`; return; }
+    e.preventDefault();
+    groupsel.value = String(m[0]); populateSubs(); subsel.value = m[1];
+    preview.playAnim(curCid, sub.cells, { charName: SLOT_NAMES[selected] }, 1);
+    movenote.textContent = `▶ g${m[0]} · ${grp.name} · #${m[1]}`;
+  });
 
   function drawGame() {
     g.fillStyle = '#000'; g.fillRect(0, 0, gameC.width, gameC.height);
