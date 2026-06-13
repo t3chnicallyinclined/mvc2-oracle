@@ -44,6 +44,10 @@
       <div class="slots" id="slots"></div>
     </div>
     <div class="card">
+      <h2>On screen — bodies + objects <span id="objn" class="dim" style="float:right"></span></h2>
+      <div id="objlist" style="font-size:11px; max-height:200px; overflow:auto">—</div>
+    </div>
+    <div class="card">
       <h2>Animation — <span id="asel" class="dim">—</span></h2>
       <canvas id="preview" width="240" height="300" style="background:#000;border:1px solid var(--line);display:block"></canvas>
       <div class="row" style="margin-top:6px">
@@ -179,13 +183,27 @@
   });
 
   // render loop: scene + live inspector
+  // live list of everything on screen: bodies (GSTA slots) + objects (OBJS: capes/projectiles/effects)
+  const nm = cid => insp.roster['0x' + (cid ?? 0).toString(16).toUpperCase()] || ('PL' + (cid ?? 0).toString(16));
+  const hx = n => '0x' + (n >>> 0).toString(16).toUpperCase();
+  function renderObjects() {
+    const rows = [];
+    for (let i = 0; i < 6; i++) { const s = client.slot?.[i]; if (s?.active)
+      rows.push(`<div><span style="color:#7ee787">body</span> ${SLOT_NAMES[i]} <b>${nm(s.char_id)}</b> sid=${hx(s.sprite_id)} (${s.screen_x|0},${s.screen_y|0})</div>`); }
+    for (const o of (client.objects || []))
+      rows.push(`<div><span style="color:${o.isEffect?'#ff9b50':'#9fb0c8'}">${o.isEffect?'fx ':'sat'}</span> ${nm(o.cid)} sid=${hx(o.sid)} t${o.type} (${o.x|0},${o.y|0})${o.hasHot?` hot(${o.hotDx},${o.hotDy})`:''}</div>`);
+    S('objlist').innerHTML = rows.join('') || '<span class="dim">none</span>';
+    S('objn').textContent = String(rows.length);
+  }
+
   let tick = 0;
   function loop() {
     ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle = '#101018'; ctx.fillRect(0,0,cv.width,cv.height);
     try { client.render(ctx); } catch (e) {}
     S('no').textContent = client.objects?.length ?? 0;
-    if (++tick % 4 === 0) {                       // ~15 Hz: inspector + catalog + mirror-live pose
+    if (++tick % 4 === 0) {                       // ~15 Hz: inspector + objects + catalog + mirror-live pose
       renderInspector();
+      renderObjects();
       updateAnim(false);
       const sl = client.slot?.[sel];
       if (mirror.checked && curCid >= 0 && sl?.active) { preview.stop(); preview.show(curCid, sl.sprite_id, { charName: curCat?.name }); }
