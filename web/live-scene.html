@@ -186,11 +186,25 @@
     S('p1body').innerHTML = [0, 2, 4].map(fighterBlock).filter(Boolean).join('') || '<span class="dim">no P1 on screen</span>';
     S('p2body').innerHTML = [1, 3, 5].map(fighterBlock).filter(Boolean).join('') || '<span class="dim">no P2 on screen</span>';
   }
+  let selNode = -1;
+  function poolFields(base) {   // pool-node manifest fields at the object's real RAM address
+    const rows = insp.fields('pool_node').map(f => {
+      const addr = base + parseInt(f.off, 16);
+      return `<tr class="${f.class === 'object' ? '' : 'eng'}"><td class="off">+0x${parseInt(f.off, 16).toString(16).toUpperCase()}</td><td>${f.name}</td><td class="na">@${hx(addr)}</td><td>${f.editable ? '' : '🔒'}</td></tr>`;
+    }).join('');
+    return `<div class="lo" style="margin-top:5px">pool node @${hx(base)}</div><table><tbody>${rows}</tbody></table>`;
+  }
   function renderShared() {
-    const objs = (client.objects || []).map(o => `<div><span style="color:${o.isEffect ? '#ff9b50' : '#9fb0c8'}">${o.isEffect ? 'fx ' : 'sat'}</span> ${nm(o.cid)} ${hx(o.sid)} (${o.x | 0},${o.y | 0})${o.hasHot ? ` hot(${o.hotDx},${o.hotDy})` : ''}</div>`).join('');
-    S('shbody').innerHTML = `<div class="lo">objects: ${(client.objects || []).length} · GSTA ${ng} · ${(wB / 1024).toFixed(1)} KB/s</div>${objs || '<span class="dim">no objects</span>'}`;
+    const objs = (client.objects || []).map(o => {
+      const node = o.node_base ? ` <span class="objnode" data-node="${o.node_base}" style="color:#7aa2f7;cursor:pointer">@${hx(o.node_base)}</span>` : '';
+      return `<div><span style="color:${o.isEffect ? '#ff9b50' : '#9fb0c8'}">${o.isEffect ? 'fx ' : 'sat'}</span> ${nm(o.cid)} ${hx(o.sid)} (${o.x | 0},${o.y | 0})${o.hasHot ? ` hot(${o.hotDx},${o.hotDy})` : ''}${node}</div>`;
+    }).join('');
+    const detail = selNode >= 0 ? poolFields(selNode)
+      : '<div class="lo" style="margin-top:5px">RAM @addr needs patch/0003-objs-node-base; click an @addr for the pool-node layout</div>';
+    S('shbody').innerHTML = `<div class="lo">objects: ${(client.objects || []).length} · GSTA ${ng} · ${(wB / 1024).toFixed(1)} KB/s</div>${objs || '<span class="dim">no objects</span>'}${detail}`;
   }
   ['p1body', 'p2body'].forEach(id => S(id).addEventListener('click', e => { const f = e.target.closest('.fighter'); if (f) selectSlot(+f.dataset.slot); }));
+  S('shbody').addEventListener('click', e => { const n = e.target.closest('.objnode'); if (n) { selNode = +n.dataset.node; renderShared(); } });
 
   // connection
   const override = new URLSearchParams(location.search).get('ws');

@@ -585,7 +585,8 @@ export class SpriteClient {
     // object draw anchors satellites here instead of the baked body-relative sp.dx
     // (0,0 => no extras, keep the baked anchor). Old servers omit the trailing bytes.
     const body = d.length - 5;
-    const stride = (n > 0 && body === n * 14) ? 14   // GSTA wire ext: +blend u8
+    const stride = (n > 0 && body === n * 18) ? 18   // +node_base u32 (RAM addr) — patch/0003-objs-node-base
+                 : (n > 0 && body === n * 14) ? 14   // GSTA wire ext: +blend u8
                  : (n > 0 && body === n * 13) ? 13   // GSTA wire ext: +effect_key u16
                  : (n > 0 && body === n * 11) ? 11
                  : (n > 0 && body === n * 9)  ? 9
@@ -593,7 +594,8 @@ export class SpriteClient {
     const hasFlags = stride >= 9;
     const hasHot   = stride >= 11;
     const hasKey   = stride >= 13;
-    const hasBlend = stride === 14;
+    const hasBlend = stride >= 14;
+    const hasNode  = stride >= 18;
     const objs = []; let o = 5;
     for (let i = 0; i < n && o + stride <= d.length; i++) {
       const raw = dv.getUint16(o+1, true);   // sprite_id with 0x8000 hflip bit
@@ -627,6 +629,7 @@ export class SpriteClient {
         ob.listType = d[o+13];
         ob.blend = (ob.listType === 2) ? 0x11 : (ob.listType === 1) ? 0x45 : 0x00;
       }
+      if (hasNode) ob.node_base = dv.getUint32(o+14, true);  // pool-node RAM base (0x8C26AA54 + i*0x1D0)
       objs.push(ob);
       o += stride;
     }
