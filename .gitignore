@@ -1,0 +1,63 @@
+# ============================================================================
+# MvC2 Oracle — .gitignore
+# RULE #1: nothing ROM-derived is EVER committed. See CONTRIBUTING.md.
+# A developer brings their OWN ROM; the setup pulls decoded assets from it
+# into the (ignored) assets/ and captures/ dirs locally. None of that is tracked.
+# ============================================================================
+
+# --- ROMs / disc images (copyright; committing one is a DMCA event) ---
+*.gdi
+*.cdi
+*.chd
+*.iso
+*.cue
+*.nrg
+*.mdf
+*.mds
+*.ccd
+*.bin.disc
+roms/
+ROMs/
+rom/
+
+# --- Savestates / NVRAM / cart saves (derived from ROM execution) ---
+*.state
+*.sav
+*.eeprom
+*.nvmem
+*.nvmem2
+
+# --- ROM-derived decoded assets (produced locally from YOUR rom) ---
+# Atlases, parts, palettes, sprite/texture/audio rips — all ROM-derived.
+assets/
+captures/
+*.ppm
+*.atlas
+PL[0-9A-Fa-f][0-9A-Fa-f].json
+PL[0-9A-Fa-f][0-9A-Fa-f].png
+PL*_parts.*
+PL*_asm.json
+PL*_idx.png
+PL*_lut.json
+oracle_capture*.bin
+
+# --- /dev/shm Oracle scratch (if ever symlinked/copied in) ---
+mc_assembly.log
+mc_probe.log
+mc_oracle*.jsonl
+mc_charq*.jsonl
+
+# --- Build / deps (rebuildable; never tracked) ---
+extern/flycast/build/
+build/
+node_modules/
+__pycache__/
+*.pyc
+
+# --- re_kb store (rebuildable from the *.surql seeds) ---
+re_kb_data/
+
+# --- editor / OS ---
+.DS_Store
+.vscode/
+*.swp
