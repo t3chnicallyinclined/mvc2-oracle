@@ -8,17 +8,28 @@
   body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.4 ui-monospace,Menlo,Consolas,monospace; }
   header { padding:8px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
   header h1 { font-size:14px; margin:0; } header .sub { color:var(--dim); font-size:11px; }
-  .wrap { display:flex; gap:14px; padding:14px; align-items:flex-start; flex-wrap:wrap; }
-  canvas { border:1px solid var(--line); background:#101018; image-rendering:pixelated; cursor:pointer; }
-  .col { display:flex; flex-direction:column; gap:10px; min-width:330px; max-width:380px; }
+  .main { display:flex; gap:12px; padding:12px; align-items:flex-start; }
+  .stage { position:relative; flex:0 0 auto; line-height:0; }
+  canvas#scene { display:block; border:1px solid var(--line); background:#101018; image-rendering:pixelated; cursor:pointer; }
+  /* data OVERLAYS the canvas (right-docked, semi-transparent) so you see the game + inspect at once */
+  .ov { position:absolute; right:6px; background:rgba(13,14,18,.80); border:1px solid var(--line); border-radius:6px;
+        padding:6px 8px; font-size:11px; line-height:1.4; backdrop-filter:blur(2px); }
+  #ovObj { top:6px; width:226px; max-height:172px; overflow:auto; }
+  #ovInsp { top:186px; bottom:6px; width:226px; overflow:auto; }
+  .ov.hide { display:none; }
+  .ov h3 { margin:0 0 4px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);
+           display:flex; justify-content:space-between; align-items:center; position:sticky; top:-6px; background:rgba(13,14,18,.92); }
+  .ov .x { color:var(--dim); cursor:pointer; padding:0 2px; }
+  .side { flex:0 0 332px; max-height:calc(100vh - 58px); overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
   .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 8px; }
+  .toggles { display:flex; gap:12px; font-size:11px; color:var(--dim); }
   input { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font:inherit; width:200px; }
   button { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 9px; cursor:pointer; font:inherit; }
   button:hover { background:#2c313e; } button.sel { border-color:var(--hot); color:var(--hot); }
   #status { color:var(--hot); } .ok{color:#7ee787!important} .err{color:#ff7b72!important}
   .slots { display:flex; gap:4px; flex-wrap:wrap; }
-  table { width:100%; border-collapse:collapse; font-size:11.5px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
   th { color:var(--dim); text-align:left; font-weight:normal; border-bottom:1px solid var(--line); }
   td { padding:1px 6px 1px 0; white-space:nowrap; } td.off{color:var(--dim)} td.val{color:var(--hot)} td.na{color:#4a4f5a}
   tr.eng{color:#6b7180} tr.chg td.val{ background:#3a3410; color:#fff; border-radius:3px; }
@@ -30,9 +41,23 @@
   <h1>LIVE SCENE + INSPECTOR</h1>
   <span class="sub">prod GSTA/OBJS → bodies + projectiles + effects; click a fighter for its live struct fields</span>
 </header>
-<div class="wrap">
-  <div><canvas id="scene" width="640" height="480"></canvas></div>
-  <div class="col">
+<div class="main">
+  <div class="stage">
+    <canvas id="scene" width="640" height="480"></canvas>
+    <div class="ov" id="ovObj">
+      <h3><span>on screen <span id="objn"></span></span><span class="x" id="xObj">×</span></h3>
+      <div id="objlist">—</div>
+    </div>
+    <div class="ov" id="ovInsp">
+      <h3><span>inspect — <span id="isel">click a fighter</span> <span id="chg"></span></span><span class="x" id="xInsp">×</span></h3>
+      <div id="fields" class="dim">live char-struct fields (real from the wire; — = not streamed)</div>
+    </div>
+  </div>
+  <div class="side">
+    <div class="toggles">
+      <label><input type="checkbox" id="tObj" checked> objects overlay</label>
+      <label><input type="checkbox" id="tInsp" checked> inspector overlay</label>
+    </div>
     <div class="card">
       <h2>Connection</h2>
       <div><input id="url"> <button id="conn">connect</button></div>
@@ -53,10 +78,6 @@
       <div class="slots" id="slots"></div>
     </div>
     <div class="card">
-      <h2>On screen — bodies + objects <span id="objn" class="dim" style="float:right"></span></h2>
-      <div id="objlist" style="font-size:11px; max-height:200px; overflow:auto">—</div>
-    </div>
-    <div class="card">
       <h2>Animation — <span id="asel" class="dim">—</span></h2>
       <canvas id="preview" width="240" height="300" style="background:#000;border:1px solid var(--line);display:block"></canvas>
       <div class="row" style="margin-top:6px">
@@ -66,10 +87,6 @@
       <div class="row" style="margin-top:4px"><span class="dim" style="font-size:11px">export:</span>
         <button id="exgif">GIF</button><button id="exwebm">WebM</button><button id="exsheet">sheet</button></div>
       <div class="dim" style="font-size:11px;margin-top:4px">keys: A/D walk · W jump · S crouch · J/K/L punch · U/I/O kick · F special</div>
-    </div>
-    <div class="card">
-      <h2>Inspector — <span id="isel" class="dim">select a fighter</span> <span id="chg" class="dim" style="float:right"></span></h2>
-      <div id="fields" class="dim">live char-struct fields (real values from the wire; — = not streamed)</div>
     </div>
   </div>
 </div>
@@ -191,6 +208,13 @@
   S('joinP2').onclick = () => pad.join(1, joinUrl()).catch(e => pad.onStatus('join failed: ' + e.message, 'err'));
   S('leave').onclick = () => pad.leave();
   setInterval(() => { const id = pad.padId(); S('pad').textContent = id ? id.slice(0, 26) : 'none (press a button)'; }, 1000);
+
+  // --- overlay toggles (show/hide the canvas data overlays) ---
+  const ovToggle = (ov, on) => S(ov).classList.toggle('hide', !on);
+  S('tObj').onchange = e => ovToggle('ovObj', e.target.checked);
+  S('tInsp').onchange = e => ovToggle('ovInsp', e.target.checked);
+  S('xObj').onclick = () => { S('tObj').checked = false; ovToggle('ovObj', false); };
+  S('xInsp').onclick = () => { S('tInsp').checked = false; ovToggle('ovInsp', false); };
 
   // canvas click -> nearest active fighter (by screen anchor)
   cv.addEventListener('click', e => {
