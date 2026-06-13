@@ -12,6 +12,9 @@ Side-ideas and design explorations for MvC2 Oracle. Each gets its own doc; this 
 - **[Click-to-Decode](IDEAS-CLICK-DECODE.md)** — click a memory location → decode the fields → render that
   object's actual sprite + play its animation (replay the captured `sprite_id` history, or decode the
   canonical anim cells). Ties memory ↔ atlas ↔ renderer.
+- **[Labeled Inspector + Live Edit](IDEAS-INSPECTOR-EDIT.md)** — every location labeled from `re_kb` (what
+  it is / does); view a struct's attached fields decoded with live values; and — guarded, mod-layer
+  RAM_WRITE, logical-fields-only — live-edit. Read side safe & near-term; write side is the gated mod surface.
 
 Build plan for the memory-map line of work: **[WORKSTREAM-MEMORY-MAP.md](WORKSTREAM-MEMORY-MAP.md)**.
 Data sources / how to get real prod data: **[MEMMAP-DATA-SOURCES.md](MEMMAP-DATA-SOURCES.md)**.
