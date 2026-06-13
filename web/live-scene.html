@@ -44,6 +44,17 @@
       <div class="slots" id="slots"></div>
     </div>
     <div class="card">
+      <h2>Animation — <span id="asel" class="dim">—</span></h2>
+      <canvas id="preview" width="240" height="300" style="background:#000;border:1px solid var(--line);display:block"></canvas>
+      <div class="row" style="margin-top:6px">
+        <select id="groupsel"></select><select id="subsel"></select><button id="anim" title="play">▶</button>
+        <label style="font-size:11px"><input type="checkbox" id="mirror" checked> mirror live pose</label>
+      </div>
+      <div class="row" style="margin-top:4px"><span class="dim" style="font-size:11px">export:</span>
+        <button id="exgif">GIF</button><button id="exwebm">WebM</button><button id="exsheet">sheet</button></div>
+      <div class="dim" style="font-size:11px;margin-top:4px">keys: A/D walk · W jump · S crouch · J/K/L punch · U/I/O kick · F special</div>
+    </div>
+    <div class="card">
       <h2>Inspector — <span id="isel" class="dim">select a fighter</span> <span id="chg" class="dim" style="float:right"></span></h2>
       <div id="fields" class="dim">live char-struct fields (real values from the wire; — = not streamed)</div>
     </div>
@@ -54,6 +65,8 @@
   import { SpriteClient } from './webgpu/sprite-client.mjs?v=2';
   import { AdaptiveTransport } from './webgpu/transport.mjs?v=2';
   import { Inspector } from './panels/inspector.mjs?v=2';
+  import { SpritePreview } from './panels/sprite-preview.mjs?v=2';
+  import { exportGIF, exportWebM, exportSheet } from './panels/anim-export.mjs?v=1';
 
   const insp = await Inspector.load('./labels.json?v=2');
   const cv = document.getElementById('scene'), ctx = cv.getContext('2d');
@@ -72,7 +85,44 @@
   // slot buttons
   const slotsEl = S('slots');
   SLOT_NAMES.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => selectSlot(i); slotsEl.append(b); });
-  function selectSlot(i) { sel = i; prev = {}; document.querySelectorAll('#slots button').forEach((b, k) => b.classList.toggle('sel', k === i)); renderInspector(); }
+  function selectSlot(i) { sel = i; prev = {}; document.querySelectorAll('#slots button').forEach((b, k) => b.classList.toggle('sel', k === i)); renderInspector(); updateAnim(true); }
+
+  // --- animation player for the SELECTED LIVE FIGHTER (its real char_id -> catalog + atlas) ---
+  const preview = new SpritePreview(document.getElementById('preview'), { scale: 1 });
+  const HEX2 = n => n.toString(16).toUpperCase().padStart(2, '0');
+  const catCache = {}; let curCat = null, curCid = -1;
+  const groupsel = S('groupsel'), subsel = S('subsel'), mirror = S('mirror');
+  async function loadCat(cid) { if (catCache[cid] !== undefined) return catCache[cid];
+    try { catCache[cid] = await (await fetch(`./anim/PL${HEX2(cid)}.json?v=2`)).json(); } catch { catCache[cid] = null; } return catCache[cid]; }
+  async function updateAnim(force) {
+    const cid = client.slot?.[sel]?.char_id ?? -1;
+    if (cid < 0) return;
+    if (cid === curCid && !force) return;
+    curCid = cid; curCat = await loadCat(cid);
+    S('asel').textContent = (curCat?.name || 'PL' + HEX2(cid)) + (curCat ? '' : ' (no catalog)');
+    groupsel.innerHTML = ''; subsel.innerHTML = '';
+    if (!curCat) return;
+    for (const g of Object.keys(curCat.groups).sort((a, b) => a - b)) {
+      const o = document.createElement('option'); o.value = g; o.textContent = `g${g} [${curCat.groups[g].kind || '?'}] ${curCat.groups[g].name}`; groupsel.append(o);
+    }
+    fillSubs();
+  }
+  function fillSubs() { subsel.innerHTML = ''; const grp = curCat?.groups[groupsel.value]; if (!grp) return;
+    grp.subanims.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `#${i} (${s.cells.length})`; subsel.append(o); }); }
+  function playSel() { mirror.checked = false; const sub = curCat?.groups[groupsel.value]?.subanims[+subsel.value];
+    if (sub) preview.playAnim(curCid, sub.cells, { charName: curCat.name }, 1); }
+  groupsel.onchange = fillSubs; subsel.onchange = playSel; S('anim').onclick = playSel;
+  const curCells = () => curCat?.groups[groupsel.value]?.subanims[+subsel.value]?.cells;
+  const exNm = e => `PL${HEX2(curCid)}_g${groupsel.value}_s${subsel.value}.${e}`;
+  S('exgif').onclick = async () => { const c = curCells(); if (c) exportGIF(await preview.captureAnim(curCid, c), exNm('gif')); };
+  S('exsheet').onclick = async () => { const c = curCells(); if (c) exportSheet(await preview.captureAnim(curCid, c), `PL${HEX2(curCid)}_g${groupsel.value}_s${subsel.value}`); };
+  S('exwebm').onclick = () => { const c = curCells(); if (!c) return; playSel(); const ms = c.reduce((a, k) => a + Math.max(1, k.duration), 0) * 1000 / 60; exportWebM(preview.canvas, ms + 150, exNm('webm')); };
+  // keyboard puppet for the selected live fighter
+  const KEY = { a:[0,0], d:[0,1], w:[1,0], s:[3,0], j:[7,0], k:[7,1], l:[7,2], u:[8,0], i:[8,1], o:[8,2], f:[21,2], ' ':[21,0] };
+  window.addEventListener('keydown', e => { if (curCid < 0 || !curCat) return; const m = KEY[e.key.toLowerCase()]; if (!m) return;
+    const sub = curCat.groups[String(m[0])]?.subanims[m[1]]; if (!sub) return; e.preventDefault();
+    mirror.checked = false; groupsel.value = String(m[0]); fillSubs(); subsel.value = m[1];
+    preview.playAnim(curCid, sub.cells, { charName: curCat.name }, 1); });
 
   function renderInspector() {
     const sl = client.slot?.[sel];
@@ -134,7 +184,12 @@
     ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle = '#101018'; ctx.fillRect(0,0,cv.width,cv.height);
     try { client.render(ctx); } catch (e) {}
     S('no').textContent = client.objects?.length ?? 0;
-    if (++tick % 4 === 0) renderInspector();   // ~15 Hz inspector refresh
+    if (++tick % 4 === 0) {                       // ~15 Hz: inspector + catalog + mirror-live pose
+      renderInspector();
+      updateAnim(false);
+      const sl = client.slot?.[sel];
+      if (mirror.checked && curCid >= 0 && sl?.active) { preview.stop(); preview.show(curCid, sl.sprite_id, { charName: curCat?.name }); }
+    }
     requestAnimationFrame(loop);
   }
   selectSlot(0); requestAnimationFrame(loop); connect();
