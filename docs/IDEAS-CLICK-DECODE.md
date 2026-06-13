@@ -26,6 +26,17 @@ memory map (where) ↔ struct decode (what fields) ↔ atlas (`sprite_id` → im
 ↔ anim data (the sequence). It's the visual payoff of the whole stack: hover shows the label, **click
 shows the picture**, and play shows the motion.
 
+## Canonical-animation mode: pick a character → pick a move → play it
+Beyond replaying captured frames, **browse and play any of a character's animations on demand.** MVC2
+animations are **groups (0x00–0x1B)** of **20-byte cells**, each cell carrying `sprite_id`(@+0x04→player+0x144)
++ `duration`(@+0x02→player+0x142), the list terminated by `Ender`(@+0x03 0x80). So an offline catalog
+`char → group → ordered [{sprite_id, duration}]` is extractable **with no emulator/ROM** — anotak's
+per-character animgroup data is already cached in `re_kb/ingest`. Build `web/anim/PL{HEX}.json` via a
+`tools/build_anim_catalog.py`, then the preview player steps each cell's `sprite_id` (atlas lookup) for its
+`duration` frames. Optionally name groups as moves via the SPL group-id dispatch (`char_prg/S_PLxx.asm`).
+The atlas sprite_id is the same key (masked `&0x7FFF`), so the existing `SpritePreview` lookup works.
+UI: a character picker + an animation/group picker → ▶ play.
+
 ## UX
 - Click a struct/cell or an on-screen box → an **inspector preview** pane shows the decoded sprite (current
   frame), the resolved `{cid, sprite_id, palette, anim_state}`, and a ▶ to play the animation (replay or

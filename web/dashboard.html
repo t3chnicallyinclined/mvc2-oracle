@@ -46,6 +46,12 @@
     <div class="card">
       <h2>Decode preview — <span id="psel" class="dim">click a character</span></h2>
       <canvas id="preview" width="300" height="180"></canvas>
+      <div class="row" style="margin-top:6px">
+        <select id="groupsel" title="animation group"></select>
+        <select id="subsel" title="sub-animation"></select>
+        <button id="anim" title="play this animation">▶</button>
+        <button id="cap" title="replay captured history">↺ capture</button>
+      </div>
       <div id="hovernote" style="margin-top:6px">hover a struct cell for its label</div>
     </div>
     <div class="card">
@@ -94,8 +100,41 @@
     document.getElementById('psel').textContent = s < 0 ? 'click a character' : SLOT_NAMES[s];
     if (s < 0) return;
     insp.renderFieldList(document.getElementById('fields'), 'char_struct', SLOT_BASES[s], readBytesFor(s));
+    populateAnim(lastFrame.slots[s].cid);
     preview.replay(lastFrame.slots[s].cid, src.history(s), { charName: SLOT_NAMES[s] }, 12);
   }
+
+  // --- animation catalog (canonical-mode player): pick group -> sub-anim -> play ---
+  const HEX2 = (n) => n.toString(16).toUpperCase().padStart(2, '0');
+  const catCache = {}; let curCat = null, curCid = -1;
+  const groupsel = document.getElementById('groupsel'), subsel = document.getElementById('subsel');
+  async function loadCatalog(cid) {
+    if (catCache[cid] !== undefined) return catCache[cid];
+    try { catCache[cid] = await (await fetch(`./anim/PL${HEX2(cid)}.json?v=1`)).json(); } catch { catCache[cid] = null; }
+    return catCache[cid];
+  }
+  async function populateAnim(cid) {
+    curCid = cid; curCat = await loadCatalog(cid); groupsel.innerHTML = ''; subsel.innerHTML = '';
+    if (!curCat) { groupsel.innerHTML = '<option>no catalog — run build_anim_catalog.py</option>'; return; }
+    for (const g of Object.keys(curCat.groups).sort((a, b) => a - b)) {
+      const o = document.createElement('option'); o.value = g; o.textContent = `g${g} · ${curCat.groups[g].name}`; groupsel.append(o);
+    }
+    populateSubs();
+  }
+  function populateSubs() {
+    subsel.innerHTML = ''; const grp = curCat && curCat.groups[groupsel.value]; if (!grp) return;
+    grp.subanims.forEach((s, i) => {
+      const fr = s.cells.reduce((a, c) => a + Math.max(1, c.duration), 0);
+      const o = document.createElement('option'); o.value = i; o.textContent = `#${i} (${s.cells.length} cells, ${fr}f)`; subsel.append(o);
+    });
+  }
+  function playSelected() {
+    const sub = curCat && curCat.groups[groupsel.value]?.subanims[+subsel.value];
+    if (sub) preview.playAnim(curCid, sub.cells, { charName: SLOT_NAMES[selected] }, 1);
+  }
+  groupsel.onchange = populateSubs; subsel.onchange = playSelected;
+  document.getElementById('anim').onclick = playSelected;
+  document.getElementById('cap').onclick = () => { if (selected >= 0) preview.replay(lastFrame.slots[selected].cid, src.history(selected), { charName: SLOT_NAMES[selected] }, 12); };
 
   function drawGame() {
     g.fillStyle = '#000'; g.fillRect(0, 0, gameC.width, gameC.height);
