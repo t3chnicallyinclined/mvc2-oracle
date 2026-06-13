@@ -53,6 +53,15 @@ export class MemMap {
   setDecay(d) { this.decayRate = d; }
   setSource(src) { src.onFrame((f) => this.step(f)); }
 
+  // Clear all state (used when swapping sources or scrubbing a capture from the start).
+  reset() {
+    this.heat.fill(0);
+    this.lastWrite.fill(-1);
+    this.count.fill(0);
+    this.frameNum = 0;
+    this.render();
+  }
+
   // One frame: decay all heat, then mark dirty pages hot, then paint.
   step(frame) {
     this.frameNum = frame.frameNum;

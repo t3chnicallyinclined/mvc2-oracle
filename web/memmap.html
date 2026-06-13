@@ -41,11 +41,24 @@
 
   <aside>
     <div class="card">
+      <h2>Source</h2>
+      <div class="row">
+        <label><input type="radio" name="src" value="synthetic" checked> synthetic</label>
+        <label><input type="radio" name="src" value="capture"> capture file</label>
+        <input id="file" type="file" accept=".json" style="display:none">
+      </div>
+      <div class="row" style="margin-top:6px"><span id="srcinfo" class="dim">synthetic — live churn, no emulator</span></div>
+    </div>
+
+    <div class="card">
       <h2>Transport</h2>
       <div class="row">
         <button id="play">⏸ Pause</button>
         <button id="step">⏭ Step</button>
-        <span>frame <span id="frame" class="framen">0</span></span>
+        <span>frame <span id="frame" class="framen">0</span><span id="total" class="dim"></span></span>
+      </div>
+      <div class="row" id="scrubrow" style="margin-top:10px; display:none">
+        <label>scrub <input id="scrub" type="range" min="0" max="0" value="0" style="width:200px"></label>
       </div>
       <div class="row" style="margin-top:10px">
         <label>decay <input id="decay" type="range" min="50" max="99" value="90"></label>
@@ -73,28 +86,72 @@
 </div>
 
 <script type="module">
-  import { MemMap, REGIONS, PAGE } from './panels/memmap-panel.mjs?v=1';
-  import { SyntheticSource } from './memmap-source-synthetic.mjs?v=1';
+  import { MemMap, REGIONS, PAGE } from './panels/memmap-panel.mjs?v=2';
+  import { SyntheticSource } from './memmap-source-synthetic.mjs?v=2';
+  import { CaptureSource } from './memmap-source-capture.mjs?v=2';
 
   const canvas = document.getElementById('map');
   const map = new MemMap(canvas, { decay: 0.90 });
-  const src = new SyntheticSource();
+  let src = new SyntheticSource();
   map.setSource(src);
 
-  // --- transport ---
-  let playing = true;
   const frameEl = document.getElementById('frame');
+  const totalEl = document.getElementById('total');
   const playBtn = document.getElementById('play');
+  const scrubRow = document.getElementById('scrubrow');
+  const scrub = document.getElementById('scrub');
+  const srcinfo = document.getElementById('srcinfo');
+  let playing = true;
+  const isCapture = () => src instanceof CaptureSource;
+
+  const updateFrame = () => {
+    frameEl.textContent = src.frame;
+    if (isCapture()) { totalEl.textContent = ` / ${src.length}`; scrub.value = src.frame; }
+    else totalEl.textContent = '';
+  };
+
   playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? '⏸ Pause' : '▶ Play'; };
-  document.getElementById('step').onclick = () => { src.advance(); frameEl.textContent = src.frame; };
+  document.getElementById('step').onclick = () => { advanceOnce(); };
+
   const decay = document.getElementById('decay'), decayv = document.getElementById('decayv');
   decay.oninput = () => { const d = decay.value / 100; map.setDecay(d); decayv.textContent = d.toFixed(2); };
 
-  function loop() {
-    if (playing) { src.advance(); frameEl.textContent = src.frame; }
-    requestAnimationFrame(loop);
+  // capture scrub: reset + replay 0..n so the decaying heat is rebuilt correctly
+  scrub.oninput = () => {
+    if (!isCapture()) return;
+    playing = false; playBtn.textContent = '▶ Play';
+    map.reset(); src.replayTo(+scrub.value); updateFrame();
+  };
+
+  function advanceOnce() {
+    const ok = src.advance();
+    if (ok === false) { playing = false; playBtn.textContent = '▶ Play'; }  // capture ended
+    updateFrame();
   }
+
+  function loop() { if (playing) advanceOnce(); requestAnimationFrame(loop); }
   requestAnimationFrame(loop);
+
+  // --- source switching ---
+  const fileInput = document.getElementById('file');
+  document.querySelectorAll('input[name=src]').forEach((r) => r.onchange = () => {
+    if (r.value === 'synthetic' && r.checked) useSynthetic();
+    if (r.value === 'capture' && r.checked) fileInput.click();
+  });
+  function useSynthetic() {
+    src = new SyntheticSource(); map.reset(); map.setSource(src);
+    scrubRow.style.display = 'none'; srcinfo.textContent = 'synthetic — live churn, no emulator';
+    playing = true; playBtn.textContent = '⏸ Pause'; updateFrame();
+  }
+  fileInput.onchange = async () => {
+    const f = fileInput.files[0]; if (!f) return;
+    const cap = JSON.parse(await f.text());
+    src = new CaptureSource(cap); map.reset(); map.setSource(src);
+    scrub.max = src.length; scrub.value = 0; scrubRow.style.display = '';
+    srcinfo.textContent = `capture: ${f.name} — ${src.length} frames` +
+      (cap.meta && cap.meta.source ? ` (${cap.meta.source})` : '');
+    playing = true; playBtn.textContent = '⏸ Pause'; updateFrame();
+  };
 
   // --- hover ---
   const hv = document.getElementById('hover').querySelectorAll('span');
