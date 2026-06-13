@@ -119,14 +119,15 @@
   const groupsel = document.getElementById('groupsel'), subsel = document.getElementById('subsel');
   async function loadCatalog(cid) {
     if (catCache[cid] !== undefined) return catCache[cid];
-    try { catCache[cid] = await (await fetch(`./anim/PL${HEX2(cid)}.json?v=1`)).json(); } catch { catCache[cid] = null; }
+    try { catCache[cid] = await (await fetch(`./anim/PL${HEX2(cid)}.json?v=2`)).json(); } catch { catCache[cid] = null; }
     return catCache[cid];
   }
   async function populateAnim(cid) {
     curCid = cid; curCat = await loadCatalog(cid); groupsel.innerHTML = ''; subsel.innerHTML = '';
     if (!curCat) { groupsel.innerHTML = '<option>no catalog — run build_anim_catalog.py</option>'; return; }
     for (const g of Object.keys(curCat.groups).sort((a, b) => a - b)) {
-      const o = document.createElement('option'); o.value = g; o.textContent = `g${g} · ${curCat.groups[g].name}`; groupsel.append(o);
+      const grp = curCat.groups[g];
+      const o = document.createElement('option'); o.value = g; o.textContent = `g${g} [${grp.kind || '?'}] · ${grp.name}`; groupsel.append(o);
     }
     populateSubs();
   }
