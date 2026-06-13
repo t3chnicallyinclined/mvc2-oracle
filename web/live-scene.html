@@ -40,6 +40,15 @@
       <div class="counts" style="margin-top:8px"><b>frames</b><span id="nf">0</span><b>KB/s</b><span id="kb">0</span><b>GSTA</b><span id="ng">0</span><b>objs</b><span id="no">0</span></div>
     </div>
     <div class="card">
+      <h2>Controller</h2>
+      <div class="row"><input id="curl" placeholder="control WS (blank = prod /play)" style="width:200px"></div>
+      <div class="row" style="margin-top:6px">
+        <button id="joinP1">🎮 JOIN P1</button><button id="joinP2">🎮 JOIN P2</button><button id="leave">leave</button>
+      </div>
+      <div style="margin-top:6px">pad: <span id="pad" class="dim">none</span> · <span id="cstat" class="dim">idle</span></div>
+      <div class="dim" style="font-size:11px;margin-top:4px">Local instance: enter <code>ws://localhost:PORT/play</code>. X/Y=LP/HP · A/B=LK/HK · RB/LB=A1/A2 · D-pad/stick=move.</div>
+    </div>
+    <div class="card">
       <h2>Fighter</h2>
       <div class="slots" id="slots"></div>
     </div>
@@ -71,6 +80,7 @@
   import { Inspector } from './panels/inspector.mjs?v=2';
   import { SpritePreview } from './panels/sprite-preview.mjs?v=2';
   import { exportGIF, exportWebM, exportSheet } from './panels/anim-export.mjs?v=1';
+  import { Controller } from './js/controller.mjs?v=1';
 
   const insp = await Inspector.load('./labels.json?v=2');
   const cv = document.getElementById('scene'), ctx = cv.getContext('2d');
@@ -173,6 +183,14 @@
     transport.connect();
   }
   S('conn').onclick = connect;
+
+  // --- controller (direct-join gamepad input; local instance = enter a ws://localhost URL) ---
+  const pad = new Controller({ onStatus: (m, c) => { const e = S('cstat'); e.textContent = m; e.className = c === 'ok' ? 'ok' : c === 'err' ? 'err' : 'dim'; } });
+  const joinUrl = () => S('curl').value.trim() || undefined;
+  S('joinP1').onclick = () => pad.join(0, joinUrl()).catch(e => pad.onStatus('join failed: ' + e.message, 'err'));
+  S('joinP2').onclick = () => pad.join(1, joinUrl()).catch(e => pad.onStatus('join failed: ' + e.message, 'err'));
+  S('leave').onclick = () => pad.leave();
+  setInterval(() => { const id = pad.padId(); S('pad').textContent = id ? id.slice(0, 26) : 'none (press a button)'; }, 1000);
 
   // canvas click -> nearest active fighter (by screen anchor)
   cv.addEventListener('click', e => {
