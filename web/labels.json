@@ -1,0 +1,98 @@
+{
+  "_meta": {
+    "title": "MvC2 Oracle inspector label manifest",
+    "rom": "MVC2 NTSC-U (marvelous2 / pl_mem.asm symbol set)",
+    "grounding": "re_kb 02_char_struct/04_memory_data/05_characters/09_facing_subgraph.surql; _marv_re pl_mem.asm + work.asm; re-catalog 00-README + spreadsheet-data",
+    "edit_safety_rule": "editable=false is a HARD BLOCK. The engine-owned pointer cluster +0x154..+0x184 and EVERY pointer must never be written into a live SH4: a stale current_cell_data (+0x154) mis-indexes the bank12 cell-processor jump table -> jmp into non-code -> illegal-instruction (expEvn=0x180). The documented state-injection dead-end.",
+    "type_legend": "u8/s8/u16/s16/u32 ints; f32 float; ptr 4-byte pointer (never editable); flags bitfield; enum has value->label map.",
+    "roster": {
+      "0x00":"Ryu","0x01":"Zangief","0x02":"Guile","0x03":"Morrigan","0x04":"Anakaris","0x05":"Strider","0x06":"Cyclops","0x07":"Wolverine (metal)",
+      "0x08":"Psylocke","0x09":"Iceman","0x0A":"Rogue","0x0B":"Captain America","0x0C":"Spider-Man","0x0D":"Hulk","0x0E":"Venom","0x0F":"Dr. Doom",
+      "0x10":"Tron","0x11":"Jill","0x12":"Hayato","0x13":"Ruby Heart","0x14":"SonSon","0x15":"Amingo","0x16":"Marrow","0x17":"Cable",
+      "0x18":"Abyss1","0x19":"Abyss2","0x1A":"Abyss3","0x1B":"Chun-Li","0x1C":"Mega Man","0x1D":"Roll","0x1E":"Akuma","0x1F":"B.B.Hood",
+      "0x20":"Felicia","0x21":"Charlie","0x22":"Sakura","0x23":"Dan","0x24":"Cammy","0x25":"Dhalsim","0x26":"M.Bison (Dictator)","0x27":"Ken",
+      "0x28":"Gambit","0x29":"Juggernaut","0x2A":"Storm","0x2B":"Sabretooth","0x2C":"Magneto","0x2D":"Shuma-Gorath","0x2E":"War Machine","0x2F":"Silver Samurai",
+      "0x30":"Omega Red","0x31":"Spiral","0x32":"Colossus","0x33":"Iron Man","0x34":"Sentinel","0x35":"Blackheart","0x36":"Thanos","0x37":"Jin",
+      "0x38":"Captain Commando","0x39":"Wolverine (bone)","0x3A":"Servbot"
+    }
+  },
+  "char_struct": {
+    "base": "0x8C268340", "stride": "0x5A4", "pair_stride": "0xB48", "count": 6,
+    "slots": [
+      {"name":"P1C1","base":"0x8C268340"},{"name":"P2C1","base":"0x8C2688E4"},{"name":"P1C2","base":"0x8C268E88"},
+      {"name":"P2C2","base":"0x8C26942C"},{"name":"P1C3","base":"0x8C2699D0"},{"name":"P2C3","base":"0x8C269F74"}
+    ],
+    "fields": [
+      {"off":"0x000","name":"active","type":"u8","class":"logical","editable":true,"note":"slot active flag (pl_mem active@0x00)."},
+      {"off":"0x001","name":"character_id","type":"enum","class":"logical","editable":true,"note":"roster char id == PLxx hex == S_PLxx index. S_PL01=Zangief NOT Ryu.","enum":{"ref":"_meta.roster"}},
+      {"off":"0x025","name":"pl_palid_match","type":"u8","class":"logical","editable":true,"note":"color/palette index selected in-match (live skin/tint). mirror @+0x52D."},
+      {"off":"0x034","name":"pos_x","type":"f32","class":"logical","editable":true,"note":"world X (pl_mem x_pos). Feeds facing setter loc_8c0d97ee + world->screen transform."},
+      {"off":"0x038","name":"pos_y","type":"f32","class":"logical","editable":true,"note":"world Y (pl_mem y_pos)."},
+      {"off":"0x040","name":"char_pal_effect","type":"u16","class":"logical","editable":true,"note":"super-glow / hit-flash palette effect word."},
+      {"off":"0x050","name":"x_sprite_scale","type":"f32","class":"logical","editable":true,"note":"per-char sprite scale X (y@+0x54, z@+0x58)."},
+      {"off":"0x054","name":"y_sprite_scale","type":"f32","class":"logical","editable":true,"note":"per-char sprite scale Y."},
+      {"off":"0x058","name":"z_sprite_scale","type":"f32","class":"logical","editable":true,"note":"per-char sprite scale Z."},
+      {"off":"0x0E0","name":"screen_x","type":"f32","class":"logical","editable":false,"note":"post-transform screen X, WRITTEN every frame by loc_8c03093c -> editing overwritten next frame."},
+      {"off":"0x0E4","name":"screen_y","type":"f32","class":"logical","editable":false,"note":"post-transform screen Y, engine-recomputed each frame."},
+      {"off":"0x0EC","name":"hitbox_scale_x","type":"f32","class":"logical","editable":true,"note":"hitbox/render scale X; body walker loc_8c0344d4 final screen = node+0xE0 + pen*scale@0xEC."},
+      {"off":"0x0F0","name":"hitbox_scale_y","type":"f32","class":"logical","editable":true,"note":"hitbox/render scale Y."},
+      {"off":"0x110","name":"facing","type":"enum","class":"logical","editable":true,"note":"facing COPY (pl_mem xflip_copy_2). WRITTEN per-frame by setter loc_8c0d97ee = (opp.pos_x>self.pos_x)?1:0 -> external write overwritten. Authoritative source = xflip@+0x1D2.","enum":{"0":"FACES LEFT","1":"FACES RIGHT"}},
+      {"off":"0x130","name":"xflip_copy","type":"u8","class":"logical","editable":true,"note":"per-frame facing copy; same semantics as facing."},
+      {"off":"0x142","name":"anim_timer","type":"u16","class":"logical","editable":true,"note":"frame_count / per-frame countdown decremented by the engine. Writing fights the anim clock."},
+      {"off":"0x144","name":"sprite_id","type":"u16","class":"logical","editable":true,"note":"stable per-char BODY render key (mask &0x7FFF) -- THE renderer input; cell index into Dat_GFX2; on the GSTA wire. Anim engine reasserts it from the active cell each frame."},
+      {"off":"0x14A","name":"anim_flags","type":"flags","class":"logical","editable":true,"note":"per-frame flags from cell+0x10: 0x20 no-cancel, 0x40 recovery, 0x80 proximity-block."},
+      {"off":"0x1D0","name":"unk_01d0","type":"u8","class":"logical","editable":true,"confirmed":false,"note":"DISPUTED width: marvelous2 byte (which move to play) vs CLAUDE.md u16. Trust byte. NOT on sprite-selection critical path."},
+      {"off":"0x1D2","name":"xflip","type":"enum","class":"logical","editable":true,"note":"AUTHORITATIVE facing/x-mirror byte (pl_mem xflip). +0x110/+0x130 are copies.","enum":{"0":"FACES LEFT","1":"FACES RIGHT"}},
+      {"off":"0x1F9","name":"stance","type":"enum","class":"logical","editable":true,"note":"posture.","enum":{"0":"stand","1":"crouch","2":"jump","3":"otg"}},
+      {"off":"0x154","name":"current_cell_data","type":"ptr","class":"engine","editable":false,"note":"ENGINE ptr to current 20-byte anim cell; deref'd every frame. HARD BLOCK -- stale value mis-indexes bank12 jump table -> expEvn=0x180. Root of the state-injection dead-end."},
+      {"off":"0x158","name":"anim_group","type":"u8","class":"engine","editable":false,"note":"ENGINE current animation group/anim id; recomputed per frame."},
+      {"off":"0x15C","name":"Dat_GFX1","type":"ptr","class":"engine","editable":false,"note":"ENGINE per-char GFX1 part-table base (tile metadata). HARD BLOCK pointer."},
+      {"off":"0x160","name":"Dat_GFX2","type":"ptr","class":"engine","editable":false,"note":"ENGINE per-char GFX2 cell table; cell=GFX2+*(u32)(GFX2+(sid&0x7FFF)*4). HARD BLOCK pointer."},
+      {"off":"0x164","name":"Dat_Pal","type":"ptr","class":"engine","editable":false,"note":"ENGINE per-char live palette ptr (ARGB4444). HARD BLOCK pointer."},
+      {"off":"0x168","name":"animations","type":"ptr","class":"engine","editable":false,"note":"ENGINE base of per-char anim/cell keyframe table. HARD BLOCK pointer."},
+      {"off":"0x16C","name":"hitbox_pattern_table","type":"ptr","class":"engine","editable":false,"note":"ENGINE hitbox pattern table ptr. HARD BLOCK."},
+      {"off":"0x170","name":"hitbox_data","type":"ptr","class":"engine","editable":false,"note":"ENGINE hitbox data ptr. HARD BLOCK."},
+      {"off":"0x174","name":"attack_data","type":"ptr","class":"engine","editable":false,"note":"ENGINE attack data table ptr (anotak DAT_atk). HARD BLOCK."},
+      {"off":"0x178","name":"Sprite_Extras","type":"ptr","class":"engine","editable":false,"note":"ENGINE EXTRAS/OAM sprite-assembly record ptr (8-byte records). HARD BLOCK."},
+      {"off":"0x17C","name":"Dat_FilePointer","type":"ptr","class":"engine","editable":false,"note":"ENGINE base file ptr for the loaded PLxx_DAT. HARD BLOCK."},
+      {"off":"0x184","name":"FAC_ptr","type":"ptr","class":"engine","editable":false,"note":"ENGINE FAC (face/portrait) file ptr. HARD BLOCK."},
+      {"off":"0x420","name":"health","type":"s16","class":"logical","editable":true,"note":"current health (pl_mem health@0x420)."},
+      {"off":"0x424","name":"red_health","type":"s16","class":"logical","editable":true,"note":"recoverable/red health (pl_mem health2@0x424)."},
+      {"off":"0x52D","name":"palette","type":"u8","class":"logical","editable":true,"note":"palette/pal_id mirror. Live select uses pl_palid_match@+0x025."}
+    ]
+  },
+  "globals": {
+    "note": "Absolute addresses.",
+    "fields": [
+      {"off":"0x8C289621","name":"match_sub_state","type":"u8","class":"logical","editable":true,"note":"match sub-state. True state machine = Match_Tracker@0x8C2895F0."},
+      {"off":"0x8C289624","name":"in_match","type":"u8","class":"logical","editable":true,"note":"in-match flag; gates scene."},
+      {"off":"0x8C28962B","name":"round_counter","type":"u8","class":"logical","editable":true,"note":"round counter."},
+      {"off":"0x8C289630","name":"game_timer","type":"u16","class":"logical","editable":true,"note":"match countdown timer."},
+      {"off":"0x8C289638","name":"stage_id","type":"u8","class":"logical","editable":true,"note":"current stage id; drives client-side stage render."},
+      {"off":"0x8C289646","name":"p1_meter_fill","type":"u16","class":"logical","editable":true,"note":"P1 super-meter fill."},
+      {"off":"0x8C289670","name":"p1_combo","type":"u16","class":"logical","editable":true,"note":"P1 combo counter."},
+      {"off":"0x8C2895F0","name":"Match_Tracker","type":"enum","class":"logical","editable":true,"note":"match-state machine; best scene-gating signal.","enum":{"0":"loading","2":"intro","3":"walk","4":"mid-match","5":"KO","6":"win","9":"finish"}},
+      {"off":"0x8C2895E0","name":"slot_table_count","type":"u32","class":"engine","editable":false,"note":"render slot-table (count array), stride 0x180 -- THE draw list. Engine-walked; do not hand-edit."},
+      {"off":"0x8C26A52C","name":"Camera_Z_Position","type":"f32","class":"logical","editable":true,"note":"camera Z / zoom (default 812.357). Lives in page 616, not 649."},
+      {"off":"0x8C287DE0","name":"slot_table_ptrs","type":"ptr","class":"engine","editable":false,"note":"inner x4 pointer array for the slot table. HARD BLOCK."},
+      {"off":"0x8C3496B0","name":"frame_counter","type":"u32","class":"logical","editable":false,"note":"global frame counter; .mcrec alignment. Editing desyncs the engine clock."}
+    ]
+  },
+  "pool_node": {
+    "note": "Object-pool node. Base 0x8C26AA54, stride 0x1D0, 256 nodes. Offsets relative to node base.",
+    "base": "0x8C26AA54", "stride": "0x1D0", "count": 256,
+    "fields": [
+      {"off":"0x003","name":"obj_category","type":"u8","class":"object","editable":true,"note":"object category/type; selects constructor; layer hint."},
+      {"off":"0x008","name":"obj_next","type":"ptr","class":"object","editable":false,"note":"active-list next ptr. HARD BLOCK -- editing corrupts the pool walk."},
+      {"off":"0x00C","name":"obj_prev","type":"ptr","class":"object","editable":false,"note":"active-list prev ptr. HARD BLOCK."},
+      {"off":"0x010","name":"obj_update_fn","type":"ptr","class":"object","editable":false,"note":"per-frame update fn ptr. HARD BLOCK -- jumped to as code."},
+      {"off":"0x034","name":"obj_world_x","type":"f32","class":"object","editable":true,"note":"object world X."},
+      {"off":"0x038","name":"obj_world_y","type":"f32","class":"object","editable":true,"note":"object world Y."},
+      {"off":"0x080","name":"obj_owner","type":"ptr","class":"object","editable":false,"note":"OWNER player-struct ptr (copy @+0x84); maps to char_id->atlas/palette. HARD BLOCK."},
+      {"off":"0x0E0","name":"obj_screen_x","type":"f32","class":"object","editable":false,"note":"RESOLVED screen X written by loc_8c03093c (NOT +0xC8); engine-recomputed."},
+      {"off":"0x0E4","name":"obj_screen_y","type":"f32","class":"object","editable":false,"note":"RESOLVED screen Y; engine-recomputed."},
+      {"off":"0x12C","name":"obj_cull","type":"u8","class":"object","editable":true,"note":"cull/enable byte (skip render if !=0). NOT a sprite_id."},
+      {"off":"0x144","name":"obj_sprite_id","type":"u16","class":"object","editable":true,"note":"object sprite_id (what readAllDrawn reads). sid is here @+0x144, NOT @+0x12C."}
+    ]
+  }
+}
