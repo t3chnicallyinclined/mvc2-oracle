@@ -66,6 +66,14 @@
     <div id="shbody" style="font-size:11px; min-width:220px">—</div>
   </div>
   <div class="card">
+    <h2>RE mode — TA-poly Z-layer ETL
+      <label style="float:right; font-size:11px; text-transform:none"><input type="checkbox" id="reMode"> decode TA</label></h2>
+    <div class="row" style="margin-bottom:4px"><label style="font-size:11px">Z cut <input id="reCut" type="range" min="0" max="200" value="91" style="width:120px"></label> <span id="reCutV" class="dim">0.00910</span></div>
+    <pre id="reBreak" style="margin:0; font-size:10.5px; color:var(--ink); white-space:pre">RE mode off — tick "decode TA" (in a match)</pre>
+    <pre id="reObj" class="dim" style="margin:6px 0 0; font-size:10px; white-space:pre"></pre>
+    <pre id="reMiss" class="dim" style="margin:4px 0 0; font-size:10px; white-space:pre-wrap"></pre>
+  </div>
+  <div class="card">
     <h2>Fighter</h2>
     <div class="slots" id="slots"></div>
   </div>
@@ -89,6 +97,9 @@
   import { SpritePreview } from './panels/sprite-preview.mjs?v=2';
   import { exportGIF, exportWebM, exportSheet } from './panels/anim-export.mjs?v=1';
   import { Controller } from './js/controller.mjs?v=1';
+  import { FrameDecoder } from './webgpu/frame-decoder.mjs?v=1';
+  import { TAParser } from './webgpu/ta-parser.mjs?v=1';
+  import { classify } from './panels/re-cockpit.mjs?v=1';
 
   const insp = await Inspector.load('./labels.json?v=2');
   const cv = document.getElementById('scene'), ctx = cv.getContext('2d');
@@ -102,6 +113,8 @@
     stance:'stance', flight_flag:'flight_flag', health:'health', red_health:'red_health' };
 
   let sel = 0;
+  let reMode = false, lastParsed = null;
+  const dec = new FrameDecoder(), tap = new TAParser();
   const S = id => document.getElementById(id);
 
   // slot buttons
@@ -198,6 +211,11 @@
           if (SpriteClient.isEFCT(d)) { client.onEFCT(d); return; }
           if (SpriteClient.isPALF?.(d)) { client.onPALF(d); return; }
           if (SpriteClient.isWATCH(d)) { client.onWATCH(d); return; }
+          // RE mode: the remaining frames are the ZCST/SYNC TA mirror stream — decode + parse for classify()
+          if (reMode && !(d[0] === 0xAD && d[1] === 0x10)) {
+            const fr = dec.applyFrame(d);
+            if (fr && fr.taSize) { const g = tap.parse(fr.taBuffer, fr.taSize); try { tap.fillBGP(g, dec.pvrRegs, dec.vram); } catch {} lastParsed = g; }
+          }
         } catch (e) {}
       } });
     transport.connect();
@@ -211,6 +229,15 @@
   S('joinP2').onclick = () => pad.join(1, joinUrl()).catch(e => pad.onStatus('join failed: ' + e.message, 'err'));
   S('leave').onclick = () => pad.leave();
   setInterval(() => { const id = pad.padId(); S('pad').textContent = id ? id.slice(0, 26) : 'none (press a button)'; }, 1000);
+
+  // --- RE mode: decode the TA stream + Z-layer ETL (heavy → off by default) ---
+  S('reMode').onchange = e => { reMode = e.target.checked; if (!reMode) { lastParsed = null; S('reBreak').textContent = 'RE mode off'; S('reObj').textContent = ''; S('reMiss').textContent = ''; } };
+  S('reCut').oninput = () => S('reCutV').textContent = (S('reCut').value / 10000).toFixed(5);
+  setInterval(() => {
+    if (!reMode || !lastParsed) return;
+    try { const r = classify(lastParsed, client, S('reCut').value / 10000);
+      S('reBreak').textContent = r.breakdown; S('reObj').textContent = r.objs; S('reMiss').textContent = r.misses; } catch (e) {}
+  }, 125);
 
   // canvas click -> nearest active fighter (by screen anchor)
   cv.addEventListener('click', e => {
