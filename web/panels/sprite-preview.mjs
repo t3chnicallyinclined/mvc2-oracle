@@ -70,5 +70,20 @@ export class SpritePreview {
     tick();
     this._timer = setInterval(tick, 1000 / fps);
   }
+
+  // CANONICAL mode: play an animation's cell list, each cell held for `duration` game frames.
+  // cells = [{sprite_id, duration, ender}]; 0xFFFF = blank (hold). speed scales playback (1 = 60fps).
+  playAnim(cid, cells, info, speed = 1) {
+    this.stop();
+    if (!cells || !cells.length) return;
+    let ci = 0, held = 0;
+    const tick = () => {
+      const cell = cells[ci % cells.length];
+      if (held === 0 && cell.sprite_id !== 0xFFFF) this.show(cid, cell.sprite_id & 0x7fff, info);
+      if (++held >= Math.max(1, cell.duration)) { held = 0; ci++; }
+    };
+    tick();
+    this._timer = setInterval(tick, (1000 / 60) / speed);   // one game frame per tick
+  }
   stop() { if (this._timer) { clearInterval(this._timer); this._timer = null; } }
 }

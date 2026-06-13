@@ -35,6 +35,9 @@ captures/
 *.atlas
 PL[0-9A-Fa-f][0-9A-Fa-f].json
 PL[0-9A-Fa-f][0-9A-Fa-f].png
+# …but the animation CATALOGS (sprite_id+duration metadata from public anotak, NOT pixels) are tracked:
+!web/anim/
+!web/anim/PL[0-9A-Fa-f][0-9A-Fa-f].json
 PL*_parts.*
 PL*_asm.json
 PL*_idx.png
