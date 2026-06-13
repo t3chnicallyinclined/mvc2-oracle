@@ -7,9 +7,10 @@
 const HEX2 = (n) => n.toString(16).toUpperCase().padStart(2, '0');
 
 export class SpritePreview {
-  constructor(canvas, { atlasBase = './test-atlas/chars' } = {}) {
+  constructor(canvas, { atlasBase = './test-atlas/chars', scale = 1 } = {}) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d');
     this.atlasBase = atlasBase;
+    this.scale = scale;       // 1 = native game-rendered size (1:1 atlas pixels)
     this.chars = {};          // cid -> { img, sprites, name, screenW, screenH } | { missing:true }
     this._timer = null; this._held = null;
   }
@@ -30,24 +31,21 @@ export class SpritePreview {
   // mirroring buildDrawList's own dx/dy/wG/hG math (no hand-rolled geometry).
   async show(cid, sid, info) {
     const c = await this.loadChar(cid);
-    const { ctx, canvas } = this;
+    const { ctx, canvas } = this, S = this.scale || 1;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     const sp = c.missing ? null : c.sprites[String(sid)];
-    if (sp) {
-      const sx = canvas.width / c.screenW, sy = canvas.height / c.screenH, S = 1;
-      const gx = canvas.width / 2, gy = canvas.height * 0.62;     // foot-ish anchor
-      const dw = sp.wG * S * sx, dh = sp.hG * S * sy;
-      const dx = gx + sp.dx * S * sx, dy = gy + sp.dy * S * sy;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(c.img, sp.x, sp.y, sp.w, sp.h, dx, dy, dw, dh);
-      this._held = sp;
-    } else if (this._held && !c.missing) {
-      const h = this._held, sx = canvas.width / c.screenW, sy = canvas.height / c.screenH;
-      ctx.globalAlpha = 0.4;
-      ctx.drawImage(c.img, h.x, h.y, h.w, h.h, canvas.width/2 + h.dx*sx, canvas.height*0.62 + h.dy*sy, h.wG*sx, h.hG*sy);
+    // object origin = bottom-center; draw at NATIVE game pixels (1:1), anchored by own-origin dx/dy
+    const draw = (s, a = 1) => {
+      const gx = canvas.width / 2, gy = canvas.height - 24;
+      ctx.globalAlpha = a; ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(c.img, s.x, s.y, s.w, s.h,
+        Math.round(gx + s.dx * S), Math.round(gy + s.dy * S), s.w * S, s.h * S);
       ctx.globalAlpha = 1;
-    } else {
+    };
+    if (sp) { draw(sp); this._held = sp; }
+    else if (this._held && !c.missing) { draw(this._held, 0.4); }
+    else {
       // graceful no-atlas: a placeholder box + the decoded identity (still useful)
       ctx.strokeStyle = '#3a3f4b'; ctx.setLineDash([4, 4]);
       ctx.strokeRect(canvas.width/2 - 30, canvas.height/2 - 45, 60, 90); ctx.setLineDash([]);
@@ -86,4 +84,30 @@ export class SpritePreview {
     this._timer = setInterval(tick, (1000 / 60) / speed);   // one game frame per tick
   }
   stop() { if (this._timer) { clearInterval(this._timer); this._timer = null; } }
+
+  // Capture an animation's cells into frames for export. Tight bbox over all cells, transparent bg,
+  // native size; 0xFFFF holds the previous frame. -> { frames:[RGBA bytes], w, h, delaysCs:[centisec] }
+  async captureAnim(cid, cells) {
+    const c = await this.loadChar(cid);
+    if (c.missing) return null;
+    const S = this.scale || 1;
+    const real = cells.filter((k) => k.sprite_id !== 0xFFFF).map((k) => c.sprites[String(k.sprite_id & 0x7fff)]).filter(Boolean);
+    if (!real.length) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of real) { minX = Math.min(minX, s.dx); minY = Math.min(minY, s.dy); maxX = Math.max(maxX, s.dx + s.w); maxY = Math.max(maxY, s.dy + s.h); }
+    const w = Math.max(1, Math.ceil((maxX - minX) * S)), h = Math.max(1, Math.ceil((maxY - minY) * S));
+    const oc = (typeof OffscreenCanvas !== 'undefined') ? new OffscreenCanvas(w, h) : Object.assign(document.createElement('canvas'), { width: w, height: h });
+    const ox = oc.getContext('2d'); ox.imageSmoothingEnabled = false;
+    const frames = [], delaysCs = []; let last = null;
+    for (const cell of cells) {
+      const cs = Math.max(1, Math.round(cell.duration * 100 / 60));
+      if (cell.sprite_id === 0xFFFF) { if (last) { frames.push(last); delaysCs.push(cs); } continue; }
+      const s = c.sprites[String(cell.sprite_id & 0x7fff)]; if (!s) continue;
+      ox.clearRect(0, 0, w, h);
+      ox.drawImage(c.img, s.x, s.y, s.w, s.h, Math.round((s.dx - minX) * S), Math.round((s.dy - minY) * S), s.w * S, s.h * S);
+      last = ox.getImageData(0, 0, w, h).data;
+      frames.push(last); delaysCs.push(cs);
+    }
+    return frames.length ? { frames, w, h, delaysCs } : null;
+  }
 }

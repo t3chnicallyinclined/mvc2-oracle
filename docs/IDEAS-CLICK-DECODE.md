@@ -37,6 +37,27 @@ per-character animgroup data is already cached in `re_kb/ingest`. Build `web/ani
 The atlas sprite_id is the same key (masked `&0x7FFF`), so the existing `SpritePreview` lookup works.
 UI: a character picker + an animation/group picker → ▶ play.
 
+### Controllable puppet (DONE) + export (DONE)
+Keys drive the animation: **A/D** walk · **W** jump · **S** crouch · **J/K/L** punches · **U/I/O** kicks ·
+**F** special. Grounded by the SH4 expert: anim **groups 0–17 are role-consistent across all characters**
+(movement + normals), so one keymap works for everyone; **specials (groups 21–25) are per-character** (Ryu's
+group 21 = Hadouken). Full motion-command parsing (QCF/DP → move) is shared engine code — a future RE
+milestone; the key→group puppet needs zero new RE. Animations export to **GIF** (from-scratch GIF89a
+encoder, transparent + looping), **WebM** (MediaRecorder), or a **PNG spritesheet + JSON** — all from
+`SpritePreview.captureAnim` at native size.
+
+### Projectiles/effects (OPEN — needs a rip or live data)
+The body special *motion* plays (it's in the catalog), but the spawned **projectile** (e.g. the Hadouken
+fireball) is a SEPARATE pool object: the SPL `jsr`s the shared spawner `loc_8c081800` (bank08), which allocs
+a pool node, sets its update-fn (+0x10) + type (+0x26) + owner char_id (+0x01), and the projectile loads its
+**own** anim group via `loc_8c034e8c` from the OWNER's atlas (PL00). So the fireball's sprite_ids live in
+PL00's atlas — but the **group→keyframe→sprite_id SEQUENCE** for the projectile group is in the PLxx_DAT
+`animations` table (+0x168), which is **not yet ripped to JSON** (anotak's Sprite column is blank; we got the
+BODY sequence from the raw-bytes input, but the projectile group isn't among the anotak body groups). To
+render projectiles offline: extend `rip_gfx2_assembly.py` to dump the `+0x168` animations table (group →
+[sprite_id, duration]), or read them from the live OBJS wire. EffectTrigger(+0x01) is a trigger OPCODE (the
+*when*), not a spawn-table index; the SPL spawner is the *what*.
+
 ## UX
 - Click a struct/cell or an on-screen box → an **inspector preview** pane shows the decoded sprite (current
   frame), the resolved `{cid, sprite_id, palette, anim_state}`, and a ▶ to play the animation (replay or
