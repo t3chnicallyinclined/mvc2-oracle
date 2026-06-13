@@ -2,103 +2,142 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MvC2 Oracle — Live Scene (GSTA/OBJS → 2D sprite client)</title>
+<title>MvC2 Oracle — Live Scene + Inspector</title>
 <style>
-  :root { --bg:#0d0e12; --panel:#15171d; --ink:#d7dae2; --dim:#7f8593; --line:#262a33; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; }
-  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
-  header h1 { font-size:14px; margin:0; letter-spacing:.5px; } header .sub { color:var(--dim); font-size:12px; }
-  .wrap { padding:16px; display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
-  canvas { border:1px solid var(--line); background:#101018; image-rendering:pixelated; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; min-width:300px; }
+  :root { --bg:#0d0e12; --panel:#15171d; --ink:#d7dae2; --dim:#7f8593; --line:#262a33; --hot:#ffe878; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.4 ui-monospace,Menlo,Consolas,monospace; }
+  header { padding:8px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:14px; margin:0; } header .sub { color:var(--dim); font-size:11px; }
+  .wrap { display:flex; gap:14px; padding:14px; align-items:flex-start; flex-wrap:wrap; }
+  canvas { border:1px solid var(--line); background:#101018; image-rendering:pixelated; cursor:pointer; }
+  .col { display:flex; flex-direction:column; gap:10px; min-width:330px; max-width:380px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
   .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 8px; }
-  input, button { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font:inherit; }
-  input { width:230px; } button { cursor:pointer; } button:hover { background:#2c313e; }
-  #status { color:#ffe878; } .ok { color:#7ee787 !important; } .err { color:#ff7b72 !important; }
-  .kv { display:grid; grid-template-columns:auto 1fr; gap:1px 12px; } .kv b { color:var(--dim); font-weight:normal; }
+  input { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font:inherit; width:200px; }
+  button { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 9px; cursor:pointer; font:inherit; }
+  button:hover { background:#2c313e; } button.sel { border-color:var(--hot); color:var(--hot); }
+  #status { color:var(--hot); } .ok{color:#7ee787!important} .err{color:#ff7b72!important}
+  .slots { display:flex; gap:4px; flex-wrap:wrap; }
+  table { width:100%; border-collapse:collapse; font-size:11.5px; }
+  th { color:var(--dim); text-align:left; font-weight:normal; border-bottom:1px solid var(--line); }
+  td { padding:1px 6px 1px 0; white-space:nowrap; } td.off{color:var(--dim)} td.val{color:var(--hot)} td.na{color:#4a4f5a}
+  tr.eng{color:#6b7180} tr.chg td.val{ background:#3a3410; color:#fff; border-radius:3px; }
+  .counts { display:grid; grid-template-columns:auto 1fr auto 1fr; gap:1px 10px; color:var(--dim); }
 </style>
 </head>
 <body>
 <header>
-  <h1>MvC2 ORACLE · LIVE SCENE</h1>
-  <span class="sub">reconstruct-from-state: GSTA + OBJS (bodies + projectiles + effects) → the existing Canvas2D sprite client</span>
+  <h1>LIVE SCENE + INSPECTOR</h1>
+  <span class="sub">prod GSTA/OBJS → bodies + projectiles + effects; click a fighter for its live struct fields</span>
 </header>
 <div class="wrap">
-  <div>
-    <canvas id="scene" width="640" height="480"></canvas>
-  </div>
-  <div class="card">
-    <h2>Connection</h2>
-    <div class="row"><input id="url" value=""> <button id="conn">connect</button></div>
-    <div style="margin-top:8px">status: <span id="status">idle</span></div>
-    <div class="kv" style="margin-top:10px">
-      <b>frames</b><span id="nf">0</span><b>GSTA</b><span id="ng">0</span><b>OBJS objs</b><span id="no">0</span>
-      <b>bodies</b><span id="nb">0</span><b>KB/s</b><span id="kb">0</span>
+  <div><canvas id="scene" width="640" height="480"></canvas></div>
+  <div class="col">
+    <div class="card">
+      <h2>Connection</h2>
+      <div><input id="url"> <button id="conn">connect</button></div>
+      <div style="margin-top:6px">status: <span id="status">idle</span></div>
+      <div class="counts" style="margin-top:8px"><b>frames</b><span id="nf">0</span><b>KB/s</b><span id="kb">0</span><b>GSTA</b><span id="ng">0</span><b>objs</b><span id="no">0</span></div>
     </div>
-    <div class="dim" style="font-size:11px;margin-top:10px">
-      Default points at the prod relay. To use a local mirror: <code>?ws=ws://localhost:7200</code> or type a URL.
-      Atlases load from <code>./test-atlas/chars</code> (run <code>scripts/fetch-prod-atlases.sh</code>). Projectiles/effects
-      ride the OBJS/EFCT wire — they render here automatically, no offline catalog needed.
+    <div class="card">
+      <h2>Fighter</h2>
+      <div class="slots" id="slots"></div>
+    </div>
+    <div class="card">
+      <h2>Inspector — <span id="isel" class="dim">select a fighter</span> <span id="chg" class="dim" style="float:right"></span></h2>
+      <div id="fields" class="dim">live char-struct fields (real values from the wire; — = not streamed)</div>
     </div>
   </div>
 </div>
 
 <script type="module">
-  import { SpriteClient } from './webgpu/sprite-client.mjs?v=1';
-  import { AdaptiveTransport } from './webgpu/transport.mjs?v=1';
+  import { SpriteClient } from './webgpu/sprite-client.mjs?v=2';
+  import { AdaptiveTransport } from './webgpu/transport.mjs?v=2';
+  import { Inspector } from './panels/inspector.mjs?v=2';
 
+  const insp = await Inspector.load('./labels.json?v=2');
   const cv = document.getElementById('scene'), ctx = cv.getContext('2d');
-  const client = new SpriteClient();
-  client.charBase = './test-atlas/chars';     // the prod-fetched atlases
+  const client = new SpriteClient(); client.charBase = './test-atlas/chars';
+  const SLOT_NAMES = ['P1C1','P2C1','P1C2','P2C2','P1C3','P2C3'];
 
-  // default endpoint: ?ws= override, else the prod relay
+  // manifest field name -> sprite-client slot property (the fields the GSTA wire actually carries)
+  const WIRE = { active:'active', character_id:'char_id', pl_palid_match:'pal_color_25', pos_x:'pos_x',
+    x_sprite_scale:'scaleX', y_sprite_scale:'scaleY', screen_x:'screen_x', screen_y:'screen_y',
+    facing:'facing', sprite_id:'sprite_id', RenderExtra:'render_extra', xflip:'facing_1d2',
+    stance:'stance', flight_flag:'flight_flag', health:'health', red_health:'red_health' };
+
+  let sel = 0, prev = {}, chgCount = 0;
+  const S = id => document.getElementById(id);
+
+  // slot buttons
+  const slotsEl = S('slots');
+  SLOT_NAMES.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => selectSlot(i); slotsEl.append(b); });
+  function selectSlot(i) { sel = i; prev = {}; document.querySelectorAll('#slots button').forEach((b, k) => b.classList.toggle('sel', k === i)); renderInspector(); }
+
+  function renderInspector() {
+    const sl = client.slot?.[sel];
+    const cid = sl?.char_id ?? 0;
+    S('isel').textContent = `${SLOT_NAMES[sel]} — ${sl?.active ? (insp.roster['0x'+cid.toString(16).toUpperCase()] || 'PL'+cid.toString(16)) : 'inactive'}`;
+    let chg = 0;
+    const rows = insp.fields('char_struct').map(f => {
+      const prop = WIRE[f.name];
+      let disp = '—', live = false, changed = false;
+      if (prop && sl && sl[prop] !== undefined) {
+        live = true; const v = sl[prop]; disp = insp.format(f, v);
+        if (prev[f.name] !== undefined && prev[f.name] !== v) { changed = true; chg++; }
+        prev[f.name] = v;
+      }
+      const cls = f.class === 'engine' ? 'eng' : '';
+      const lock = f.editable ? '' : '🔒';
+      return `<tr class="${cls}${changed ? ' chg' : ''}"><td class="off">+0x${parseInt(f.off,16).toString(16).toUpperCase()}</td><td>${f.name}</td><td class="${live ? 'val' : 'na'}">${disp}</td><td>${lock}</td></tr>`;
+    }).join('');
+    S('fields').innerHTML = `<table><thead><tr><th>off</th><th>field</th><th>value</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    if (chg) { chgCount = chg; S('chg').textContent = `${chg} changed`; }
+  }
+
+  // connection
   const override = new URLSearchParams(location.search).get('ws');
-  const urlEl = document.getElementById('url');
-  urlEl.value = override || 'wss://nobd.net/ws';
-
-  const S = (id) => document.getElementById(id);
-  const setStatus = (m, cls = '') => { const s = S('status'); s.textContent = m; s.className = cls; };
+  S('url').value = override || 'wss://nobd.net/ws';
+  const setStatus = (m, c='') => { const s = S('status'); s.textContent = m; s.className = c; };
   let transport = null, wB = 0, nf = 0, ng = 0;
-  setInterval(() => { S('kb').textContent = (wB / 1024).toFixed(1); wB = 0; }, 1000);
-
+  setInterval(() => { S('kb').textContent = (wB/1024).toFixed(1); wB = 0; }, 1000);
   function connect() {
     if (transport) { try { transport.close?.(); } catch {} }
-    const wsUrl = urlEl.value.trim();
     setStatus('connecting…');
-    transport = new AdaptiveTransport({
-      wsUrl,
-      wtUrl: null,
-      onstatus: (m) => setStatus(m),
-      onopen: () => setStatus(`connected (${transport.type}) — waiting for frames`, 'ok'),
+    transport = new AdaptiveTransport({ wsUrl: S('url').value.trim(), wtUrl: null,
+      onstatus: m => setStatus(m), onopen: () => setStatus(`connected (${transport.type})`, 'ok'),
       onclose: () => setStatus('disconnected', 'err'),
-      onframe: (d) => {
-        wB += d.byteLength; nf++; S('nf').textContent = nf;
+      onframe: d => { wB += d.byteLength; nf++; S('nf').textContent = nf;
         try {
           if (SpriteClient.isGSTA(d)) { client.onGSTA(d); ng++; S('ng').textContent = ng; return; }
           if (SpriteClient.isOBJS(d)) { client.onOBJS(d); return; }
           if (SpriteClient.isEFCT(d)) { client.onEFCT(d); return; }
           if (SpriteClient.isPALF?.(d)) { client.onPALF(d); return; }
           if (SpriteClient.isWATCH(d)) { client.onWATCH(d); return; }
-          // ZCST/STAF/TXTR/CHARQ etc. ignored — we reconstruct the scene from GSTA+OBJS+effects only
-        } catch (e) { /* keep streaming */ }
-      },
-    });
+        } catch (e) {}
+      } });
     transport.connect();
   }
   S('conn').onclick = connect;
 
-  // render loop: clear + draw the reconstructed scene (bodies + objects + effects + HUD)
+  // canvas click -> nearest active fighter (by screen anchor)
+  cv.addEventListener('click', e => {
+    const r = cv.getBoundingClientRect(), x = (e.clientX-r.left)*(cv.width/r.width), y = (e.clientY-r.top)*(cv.height/r.height);
+    let best = -1, bd = 1e9;
+    for (let i = 0; i < 6; i++) { const s = client.slot?.[i]; if (!s?.active) continue; const dx = x-(s.screen_x||0), dy = y-(s.screen_y||0), d = dx*dx+dy*dy; if (d < bd) { bd = d; best = i; } }
+    if (best >= 0) selectSlot(best);
+  });
+
+  // render loop: scene + live inspector
+  let tick = 0;
   function loop() {
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.fillStyle = '#101018'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle = '#101018'; ctx.fillRect(0,0,cv.width,cv.height);
     try { client.render(ctx); } catch (e) {}
-    // cheap live counts
-    S('no').textContent = (client.objects?.length ?? 0);
-    S('nb').textContent = (client.slot?.filter?.(s => s && s.active)?.length ?? '—');
+    S('no').textContent = client.objects?.length ?? 0;
+    if (++tick % 4 === 0) renderInspector();   // ~15 Hz inspector refresh
     requestAnimationFrame(loop);
   }
-  requestAnimationFrame(loop);
-  connect();   // auto-connect on load
+  selectSlot(0); requestAnimationFrame(loop); connect();
 </script>
 </body>
 </html>
