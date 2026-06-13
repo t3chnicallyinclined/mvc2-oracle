@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MvC2 Oracle — Linked View (demo)</title>
+<style>
+  :root { --bg:#0d0e12; --panel:#15171d; --ink:#d7dae2; --dim:#7f8593; --line:#262a33; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+  header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:baseline; }
+  header h1 { font-size:14px; margin:0; letter-spacing:.5px; }
+  header .sub { color:var(--dim); font-size:12px; }
+  .wrap { display:flex; gap:18px; padding:16px; align-items:flex-start; flex-wrap:wrap; }
+  .col { display:flex; flex-direction:column; gap:8px; }
+  canvas { border:1px solid var(--line); background:#000; }
+  #game { cursor:pointer; } #structs { cursor:crosshair; }
+  .cap { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  aside { min-width:280px; max-width:320px; display:flex; flex-direction:column; gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 8px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  button { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; font:inherit; }
+  button:hover { background:#2c313e; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 12px; }
+  .kv b { color:var(--dim); font-weight:normal; }
+  .framen { color:#ffe878; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<header>
+  <h1>MvC2 ORACLE · LINKED VIEW</h1>
+  <span class="sub">demo — game (top) ↔ char-struct field-heat (bottom), one tint per object · synthetic, no emulator</span>
+</header>
+
+<div class="wrap">
+  <div class="col">
+    <span class="cap">game view — object tint</span>
+    <canvas id="game" width="480" height="240"></canvas>
+    <span class="cap" style="margin-top:8px">char structs — field-resolution "owned + changed" (engine cluster = striped noise)</span>
+    <canvas id="structs" width="660" height="470"></canvas>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h2>Transport</h2>
+      <div class="row">
+        <button id="play">⏸ Pause</button>
+        <button id="step">⏭ Step</button>
+        <span>frame <span id="frame" class="framen">0</span></span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>decay <input id="decay" type="range" min="50" max="98" value="85"></label>
+        <span id="decayv" class="dim">0.85</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Inspect</h2>
+      <div class="kv" id="ins">
+        <b>object</b><span>hover either view</span>
+        <b>address</b><span>—</span>
+        <b>field</b><span>—</span>
+        <b>heat</b><span>—</span>
+        <b>writes</b><span>—</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>How to read it</h2>
+      <div class="dim" style="font-size:12px">
+        Each character has a color. Top: its on-screen box. Bottom: its 0x5A4 struct as a byte grid.
+        Bytes flare in the object color the frame they change ("owned + changed"). The dim striped band is
+        the engine pointer cluster (+0x154..184) — it churns every frame, so it's demoted as noise.
+        Hover either view to link them.
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script type="module">
+  import { StructPanel, SLOT_COLORS, SLOT_NAMES } from './panels/struct-panel.mjs?v=1';
+  import { LinkedSyntheticSource } from './linked-source-synthetic.mjs?v=1';
+
+  const gameC = document.getElementById('game'), g = gameC.getContext('2d');
+  const structC = document.getElementById('structs');
+  const panel = new StructPanel(structC, { cell: 5 });
+  const src = new LinkedSyntheticSource();
+
+  let lastFrame = { slots: [], projectiles: [] };
+  let hovered = -1;                                   // linked highlight (slot index)
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+  function drawGame() {
+    g.fillStyle = '#000'; g.fillRect(0, 0, gameC.width, gameC.height);
+    g.strokeStyle = '#1c1f27'; g.strokeRect(0.5, 0.5, gameC.width-1, gameC.height-1);
+    // projectiles (owner color)
+    for (const p of lastFrame.projectiles) {
+      g.fillStyle = rgba(SLOT_COLORS[p.owner], 0.9);
+      g.fillRect(p.x, p.y, 12, 8);
+    }
+    // character boxes
+    lastFrame.slots.forEach((sl, s) => {
+      const c = SLOT_COLORS[s], on = hovered === s;
+      g.fillStyle = rgba(c, on ? 0.85 : 0.5);
+      g.fillRect(sl.screen.x, sl.screen.y, 44, 72);
+      g.strokeStyle = rgba(c, 1); g.lineWidth = on ? 3 : 1;
+      g.strokeRect(sl.screen.x, sl.screen.y, 44, 72);
+      g.fillStyle = '#000'; g.font = '10px ui-monospace,monospace';
+      g.fillText(SLOT_NAMES[s], sl.screen.x + 4, sl.screen.y + 14);
+    });
+  }
+
+  // capture the latest frame for the game view (panel.step already consumes it for heat)
+  const realCb = panel.step.bind(panel);
+  src.onFrame((f) => { lastFrame = f; realCb(f); drawGame(); });
+
+  // transport
+  let playing = true;
+  const frameEl = document.getElementById('frame'), playBtn = document.getElementById('play');
+  playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? '⏸ Pause' : '▶ Play'; };
+  document.getElementById('step').onclick = () => { src.advance(); frameEl.textContent = src.frame; };
+  const decay = document.getElementById('decay'), decayv = document.getElementById('decayv');
+  decay.oninput = () => { panel.decayRate = decay.value/100; decayv.textContent = (decay.value/100).toFixed(2); };
+  function loop() { if (playing) { src.advance(); frameEl.textContent = src.frame; } requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+
+  // --- linking ---
+  const ins = document.getElementById('ins').querySelectorAll('span');
+  const hex = (n) => '0x' + (n>>>0).toString(16).toUpperCase();
+  function setHover(slot) { if (slot !== hovered) { hovered = slot; panel.setSelected(slot); drawGame(); } }
+
+  structC.addEventListener('mousemove', (e) => {
+    const hit = panel.locate(e.clientX, e.clientY);
+    if (!hit) { setHover(-1); return; }
+    setHover(hit.slot);
+    const i = panel.info(hit.slot, hit.off);
+    ins[0].textContent = i.slotName; ins[1].textContent = hex(i.addr);
+    ins[2].textContent = i.field + (i.engine ? ' (noise)' : ''); ins[3].textContent = i.heat.toFixed(2);
+    ins[4].textContent = i.writes.toLocaleString();
+  });
+  structC.addEventListener('mouseleave', () => setHover(-1));
+
+  gameC.addEventListener('mousemove', (e) => {
+    const rect = gameC.getBoundingClientRect();
+    const x = (e.clientX-rect.left)*(gameC.width/rect.width), y = (e.clientY-rect.top)*(gameC.height/rect.height);
+    let hit = -1;
+    lastFrame.slots.forEach((sl, s) => { if (x>=sl.screen.x && x<sl.screen.x+44 && y>=sl.screen.y && y<sl.screen.y+72) hit = s; });
+    setHover(hit);
+    if (hit >= 0) { ins[0].textContent = SLOT_NAMES[hit]; ins[1].textContent = hex(0x8C268340 + hit*0x5A4) + ' (base)'; ins[2].textContent = 'char struct'; ins[3].textContent = '—'; ins[4].textContent = '—'; }
+  });
+  gameC.addEventListener('mouseleave', () => setHover(-1));
+</script>
+</body>
+</html>
