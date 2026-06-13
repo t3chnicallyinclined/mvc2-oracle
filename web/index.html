@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MvC2 Oracle — Dashboard</title>
+<style>
+  :root { --bg:#0d0e12; --panel:#15171d; --ink:#d7dae2; --dim:#7f8593; --line:#262a33; --hot:#ffe878; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:13px/1.4 ui-monospace,Menlo,Consolas,monospace; }
+  body { display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:18px; padding:8px 16px; border-bottom:1px solid var(--line); flex:0 0 auto; }
+  header h1 { font-size:14px; margin:0; letter-spacing:.5px; white-space:nowrap; }
+  header h1 b { color:var(--hot); }
+  nav { display:flex; gap:4px; }
+  nav button { background:transparent; color:var(--dim); border:1px solid transparent; border-bottom:2px solid transparent; border-radius:6px 6px 0 0; padding:6px 14px; cursor:pointer; font:inherit; }
+  nav button:hover { color:var(--ink); background:#1a1d24; }
+  nav button.active { color:var(--hot); border-bottom-color:var(--hot); background:#1a1d24; }
+  .sub { color:var(--dim); font-size:11px; margin-left:auto; }
+  main { flex:1 1 auto; position:relative; min-height:0; }
+  iframe { position:absolute; inset:0; width:100%; height:100%; border:0; background:var(--bg); display:none; }
+  iframe.active { display:block; }
+  .hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--dim); }
+</style>
+</head>
+<body>
+<header>
+  <h1>MvC2 <b>ORACLE</b></h1>
+  <nav id="tabs">
+    <button data-view="live-scene.html" class="active">Live Scene</button>
+    <button data-view="dashboard.html">Inspector + Animations</button>
+    <button data-view="memmap.html">Memory Map</button>
+    <button data-view="linked-view.html">Linked View</button>
+  </nav>
+  <span class="sub">reverse-engineering cockpit · GSTA/OBJS state → sprites, labeled memory, frame-by-frame</span>
+</header>
+<main id="main"></main>
+
+<script>
+  // tabbed shell: one <iframe> per view, lazy-loaded on first activation (so only the active
+  // view runs its WS/render loop — no 4 concurrent connections). Each view is a standalone page.
+  const main = document.getElementById('main');
+  const frames = {};   // view -> iframe
+  function show(view, btn) {
+    document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b === btn));
+    if (!frames[view]) {
+      const f = document.createElement('iframe'); f.dataset.view = view; f.src = view; frames[view] = f; main.appendChild(f);
+    }
+    Object.values(frames).forEach(f => f.classList.toggle('active', f.dataset.view === view));
+  }
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.view, b));
+  // open the first tab
+  const first = document.querySelector('nav button'); show(first.dataset.view, first);
+</script>
+</body>
+</html>
