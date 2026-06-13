@@ -56,6 +56,14 @@ cd web && python3 -m http.server
 # pause / step / scrub frames; DIFF overlay, struct inspector, WATCH diff, ASMTRACE pen overlay
 ```
 
+### Path A2 — Real sprites, fast (fetch decoded atlases from prod)
+The full roster was baked offline-from-disc and lives on prod. Pull the decoded atlases (READ-ONLY,
+gitignored, never committed) and the dashboard renders real animated sprites — no local decode:
+```bash
+./scripts/fetch-prod-atlases.sh            # 6 demo chars (or: all / PLxx …)
+# open web/dashboard.html → click a character → pick a group/sub-anim → ▶ plays REAL frames
+```
+
 ### Path B — Bring your own ROM (the full setup)
 You supply a legally-owned MVC2 image; the setup decodes everything from it locally.
 ```bash
