@@ -148,28 +148,25 @@
   // --- P1 / shared / P2 panels (fighters by player, live values + change-heat) ---
   const nm = cid => insp.roster['0x' + (cid ?? 0).toString(16).toUpperCase()] || ('PL' + (cid ?? 0).toString(16));
   const hx = n => '0x' + (n >>> 0).toString(16).toUpperCase();
-  const byName = {}; insp.fields('char_struct').forEach(f => byName[f.name] = f);
   const prevV = Array.from({ length: 6 }, () => ({}));
-  const COMPACT = ['health', 'red_health', 'sprite_id', 'facing', 'pos_x', 'stance', 'anim_timer'];
-  const slotVal = (i, fn) => { const p = WIRE[fn], s = client.slot?.[i]; return (p && s && s[p] !== undefined) ? s[p] : undefined; };
-  function kv(i, fn) {
-    const f = byName[fn], v = slotVal(i, fn); if (v === undefined) return '';
-    const changed = prevV[i][fn] !== undefined && prevV[i][fn] !== v; prevV[i][fn] = v;
-    return `<span class="lo">${fn.replace(/_/g, ' ')}:</span><span class="${changed ? 'hot' : ''}">${insp.format(f, v)}</span>`;
-  }
+  // all fields, always shown, with per-field change-heat (changed values flash)
   function fullTable(i) {
     const s = client.slot?.[i];
-    const rows = insp.fields('char_struct').map(f => { const p = WIRE[f.name]; let d = '—', live = false;
-      if (p && s && s[p] !== undefined) { live = true; d = insp.format(f, s[p]); }
-      return `<tr class="${f.class === 'engine' ? 'eng' : ''}"><td class="off">+0x${parseInt(f.off, 16).toString(16).toUpperCase()}</td><td>${f.name}</td><td class="${live ? 'val' : 'na'}">${d}</td><td>${f.editable ? '' : '🔒'}</td></tr>`; }).join('');
+    const rows = insp.fields('char_struct').map(f => {
+      const p = WIRE[f.name]; let d = '—', live = false, changed = false;
+      if (p && s && s[p] !== undefined) {
+        live = true; const v = s[p]; d = insp.format(f, v);
+        if (prevV[i][f.name] !== undefined && prevV[i][f.name] !== v) changed = true;
+        prevV[i][f.name] = v;
+      }
+      return `<tr class="${f.class === 'engine' ? 'eng' : ''}${changed ? ' chg' : ''}"><td class="off">+0x${parseInt(f.off, 16).toString(16).toUpperCase()}</td><td>${f.name}</td><td class="${live ? 'val' : 'na'}">${d}</td><td>${f.editable ? '' : '🔒'}</td></tr>`;
+    }).join('');
     return `<table style="margin-top:3px"><tbody>${rows}</tbody></table>`;
   }
   function fighterBlock(i) {
     const s = client.slot?.[i]; if (!s?.active) return '';
-    const compact = COMPACT.map(fn => kv(i, fn)).filter(Boolean).join(' · ');
-    return `<div class="fighter ${sel === i ? 'sel' : ''}" data-slot="${i}">
-      <div class="nm">${SLOT_NAMES[i]} <b>${nm(s.char_id)}</b></div>
-      <div>${compact}</div>${sel === i ? fullTable(i) : '<div class="lo" style="font-size:10px">click for all fields</div>'}</div>`;
+    return `<div class="fighter ${sel === i ? 'sel' : ''}" data-slot="${i}" title="click to drive the animation player">
+      <div class="nm">${SLOT_NAMES[i]} <b>${nm(s.char_id)}</b></div>${fullTable(i)}</div>`;
   }
   function renderPlayers() {
     S('p1body').innerHTML = [0, 2, 4].map(fighterBlock).filter(Boolean).join('') || '<span class="dim">no P1 on screen</span>';
