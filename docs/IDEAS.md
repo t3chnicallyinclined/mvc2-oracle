@@ -7,7 +7,11 @@ Side-ideas and design explorations for MvC2 Oracle. Each gets its own doc; this 
   gray = the un-RE'd frontier → click-to-label feeds `re_kb`. **MVP (M1) built** → `web/memmap.html`.
 - **[Linked View](IDEAS-LINKED-VIEW.md)** — game render on top, memory radar on bottom, every object tinted
   the same color in both → see pixels↔memory correspondence. Reuses the DIFF-v7 tint debugger from
-  `webgpu-test.html`. Needs sub-page resolution for the labeled struct/pool regions.
+  `webgpu-test.html`. Needs sub-page resolution for the labeled struct/pool regions. **Demo built** →
+  `web/linked-view.html`.
+- **[Click-to-Decode](IDEAS-CLICK-DECODE.md)** — click a memory location → decode the fields → render that
+  object's actual sprite + play its animation (replay the captured `sprite_id` history, or decode the
+  canonical anim cells). Ties memory ↔ atlas ↔ renderer.
 
 Build plan for the memory-map line of work: **[WORKSTREAM-MEMORY-MAP.md](WORKSTREAM-MEMORY-MAP.md)**.
 Data sources / how to get real prod data: **[MEMMAP-DATA-SOURCES.md](MEMMAP-DATA-SOURCES.md)**.

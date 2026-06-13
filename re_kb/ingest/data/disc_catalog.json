@@ -1,0 +1,415 @@
+{
+  "source": "disc",
+  "disc_dir": "C:\\Users\\trist\\projects\\maplecast-flycast\\MVC2 Dev Files",
+  "pldat_root": "C:\\Users\\trist\\projects\\maplecast-flycast\\dasm_PLDAT",
+  "bin_count": 866,
+  "total_bytes": 159725586,
+  "char_dir_count": 60,
+  "palette_count": 60,
+  "sources": [
+    {
+      "slug": "disc_mvc2_devfiles",
+      "kind": "disc",
+      "ref": "MVC2 Dev Files/",
+      "note": "MVC2 Dreamcast disc 'Dev Files' dump \u2014 866 .BIN files, 24 families, 152 MB. RE catalog only (file inventory, not ROM bytes)."
+    },
+    {
+      "slug": "pldat_decoded",
+      "kind": "pldat",
+      "ref": "dasm_PLDAT/Output/",
+      "note": "PLDAT decoded structure (dasm_PLDAT_v005a.py) \u2014 60 PLxx_DAT dirs, 60 palette dumps. Format catalog (GFX1/GFX2/PALETTE/ANIM/EXTRAS/HITBOX/ATTACK)."
+    }
+  ],
+  "families": [
+    {
+      "prefix": "PL",
+      "purpose": "per-character data (PLDAT sprite/anim/palette + FAC/VOI/WIN/TBL/PAK)",
+      "count": 292,
+      "total_bytes": 67727184,
+      "samples": [
+        "PL00PAK.BIN (518976B)",
+        "PL00_FAC.BIN (25772B)",
+        "PL00_TBL.BIN (20928B)",
+        "PL00_VOI.BIN (84168B)"
+      ]
+    },
+    {
+      "prefix": "ATCK",
+      "purpose": "per-character attack / frame data tables",
+      "count": 59,
+      "total_bytes": 78688,
+      "samples": [
+        "ATCK00.BIN (1088B)",
+        "ATCK01.BIN (1216B)",
+        "ATCK02.BIN (1152B)",
+        "ATCK03.BIN (1728B)"
+      ]
+    },
+    {
+      "prefix": "HIT",
+      "purpose": "hitbox tables",
+      "count": 59,
+      "total_bytes": 106176,
+      "samples": [
+        "HIT_00.BIN (2240B)",
+        "HIT_01.BIN (1600B)",
+        "HIT_02.BIN (1952B)",
+        "HIT_03.BIN (1600B)"
+      ]
+    },
+    {
+      "prefix": "HIT_DT",
+      "purpose": "hitbox data tables",
+      "count": 59,
+      "total_bytes": 136928,
+      "samples": [
+        "HIT_DT00.BIN (2688B)",
+        "HIT_DT01.BIN (2464B)",
+        "HIT_DT02.BIN (2240B)",
+        "HIT_DT03.BIN (2176B)"
+      ]
+    },
+    {
+      "prefix": "HIT_FM",
+      "purpose": "hitbox frame-meta tables",
+      "count": 59,
+      "total_bytes": 120832,
+      "samples": [
+        "HIT_FM00.BIN (2048B)",
+        "HIT_FM01.BIN (2048B)",
+        "HIT_FM02.BIN (2048B)",
+        "HIT_FM03.BIN (2048B)"
+      ]
+    },
+    {
+      "prefix": "LIB",
+      "purpose": "shared character library data",
+      "count": 59,
+      "total_bytes": 138912,
+      "samples": [
+        "LIB00.BIN (2560B)",
+        "LIB01.BIN (2048B)",
+        "LIB02.BIN (2944B)",
+        "LIB03.BIN (2784B)"
+      ]
+    },
+    {
+      "prefix": "TAIKI",
+      "purpose": "per-character idle/standby data (TAIKI family)",
+      "count": 59,
+      "total_bytes": 62272,
+      "samples": [
+        "TAIKI00.BIN (704B)",
+        "TAIKI01.BIN (768B)",
+        "TAIKI02.BIN (2048B)",
+        "TAIKI03.BIN (768B)"
+      ]
+    },
+    {
+      "prefix": "WARI",
+      "purpose": "per-character data table (WARI family)",
+      "count": 59,
+      "total_bytes": 115968,
+      "samples": [
+        "WARI00.BIN (1984B)",
+        "WARI01.BIN (1856B)",
+        "WARI02.BIN (2368B)",
+        "WARI03.BIN (1856B)"
+      ]
+    },
+    {
+      "prefix": "YOK",
+      "purpose": "per-character data table (YOK family)",
+      "count": 59,
+      "total_bytes": 176992,
+      "samples": [
+        "YOK00.BIN (3136B)",
+        "YOK01.BIN (3136B)",
+        "YOK02.BIN (3168B)",
+        "YOK03.BIN (3520B)"
+      ]
+    },
+    {
+      "prefix": "DM",
+      "purpose": "demo / attract-mode playback data",
+      "count": 34,
+      "total_bytes": 13508452,
+      "samples": [
+        "DM00POL.BIN (91368B)",
+        "DM00TEX.BIN (122880B)",
+        "DM01POL.BIN (124328B)",
+        "DM01TEX.BIN (1499136B)"
+      ]
+    },
+    {
+      "prefix": "STG",
+      "purpose": "stage data (background / scene)",
+      "count": 34,
+      "total_bytes": 29693872,
+      "samples": [
+        "STG00POL.BIN (173976B)",
+        "STG00TEX.BIN (1671168B)",
+        "STG01POL.BIN (116384B)",
+        "STG01TEX.BIN (1671168B)"
+      ]
+    },
+    {
+      "prefix": "ADX_S",
+      "purpose": "ADX streamed stage BGM (per-stage music)",
+      "count": 13,
+      "total_bytes": 35398214,
+      "samples": [
+        "ADX_S000.BIN (3041280B)",
+        "ADX_S010.BIN (4558848B)",
+        "ADX_S020.BIN (3354624B)",
+        "ADX_S030.BIN (3606528B)"
+      ]
+    },
+    {
+      "prefix": "ADX_",
+      "purpose": "ADX audio (BGM / voice / jingles)",
+      "count": 7,
+      "total_bytes": 4898596,
+      "samples": [
+        "ADX_CAPL.BIN (223542B)",
+        "ADX_CONT.BIN (602112B)",
+        "ADX_HERE.BIN (127350B)",
+        "ADX_OPEN.BIN (1736514B)"
+      ]
+    },
+    {
+      "prefix": "SE_",
+      "purpose": "sound effects",
+      "count": 3,
+      "total_bytes": 1148124,
+      "samples": [
+        "SE_COMN.BIN (931284B)",
+        "SE_STAF.BIN (93732B)",
+        "SE_SYUK.BIN (123108B)"
+      ]
+    },
+    {
+      "prefix": "SELVM",
+      "purpose": "character-select VMU data",
+      "count": 2,
+      "total_bytes": 262144,
+      "samples": [
+        "SELVMJ.BIN (131072B)",
+        "SELVMU.BIN (131072B)"
+      ]
+    },
+    {
+      "prefix": "1ST_READ",
+      "purpose": "main SH4 executable (the game binary)",
+      "count": 1,
+      "total_bytes": 2417796,
+      "samples": [
+        "1ST_READ.BIN (2417796B)"
+      ]
+    },
+    {
+      "prefix": "AICADRV",
+      "purpose": "AICA sound driver",
+      "count": 1,
+      "total_bytes": 59264,
+      "samples": [
+        "AICADRV.BIN (59264B)"
+      ]
+    },
+    {
+      "prefix": "DEBUG",
+      "purpose": "debug build data",
+      "count": 1,
+      "total_bytes": 3232,
+      "samples": [
+        "DEBUG.BIN (3232B)"
+      ]
+    },
+    {
+      "prefix": "EFKYPOL",
+      "purpose": "effect/key polygon data",
+      "count": 1,
+      "total_bytes": 155344,
+      "samples": [
+        "EFKYPOL.BIN (155344B)"
+      ]
+    },
+    {
+      "prefix": "EFKYTEX",
+      "purpose": "effect/key texture data",
+      "count": 1,
+      "total_bytes": 374784,
+      "samples": [
+        "EFKYTEX.BIN (374784B)"
+      ]
+    },
+    {
+      "prefix": "ENDDCTEX",
+      "purpose": "ending textures",
+      "count": 1,
+      "total_bytes": 1443262,
+      "samples": [
+        "ENDDCTEX.BIN (1443262B)"
+      ]
+    },
+    {
+      "prefix": "FONT",
+      "purpose": "font texture data",
+      "count": 1,
+      "total_bytes": 73792,
+      "samples": [
+        "FONT.BIN (73792B)"
+      ]
+    },
+    {
+      "prefix": "IP",
+      "purpose": "IP.BIN disc boot header",
+      "count": 1,
+      "total_bytes": 32768,
+      "samples": [
+        "IP.BIN (32768B)"
+      ]
+    },
+    {
+      "prefix": "SELTEX",
+      "purpose": "character-select textures",
+      "count": 1,
+      "total_bytes": 1591990,
+      "samples": [
+        "SELTEX.BIN (1591990B)"
+      ]
+    }
+  ],
+  "pldat_header": [
+    {
+      "offset": "0x00",
+      "name": "gfx_pointer01",
+      "note": "-> GFX1 part-pixel block (Dat_GFX1; decoded sprite parts)"
+    },
+    {
+      "offset": "0x04",
+      "name": "gfx_pointer02",
+      "note": "-> GFX2 block (Dat_GFX2; secondary parts/cells)"
+    },
+    {
+      "offset": "0x08",
+      "name": "palette_pointer",
+      "note": "-> PALETTE block (ARGB4444, 16-color rows, idx0=transparent)"
+    },
+    {
+      "offset": "0x0C",
+      "name": "extras_pointer",
+      "note": "-> EXTRAS / sprite-assembly (OAM) table"
+    },
+    {
+      "offset": "0x10",
+      "name": "separation_blank",
+      "note": "padding/separator"
+    },
+    {
+      "offset": "0x14",
+      "name": "animations",
+      "note": "-> ANIMATION_DATA (per-frame durations + EXTRAS ptr table)"
+    },
+    {
+      "offset": "0x18",
+      "name": "hitbox_pattern_table",
+      "note": "-> hitbox pattern table"
+    },
+    {
+      "offset": "0x1C",
+      "name": "hitbox_data",
+      "note": "-> hitbox data"
+    },
+    {
+      "offset": "0x20",
+      "name": "attack_data",
+      "note": "-> attack data"
+    },
+    {
+      "offset": "0x24",
+      "name": "ai_script_00",
+      "note": "-> AI script 0"
+    },
+    {
+      "offset": "0x28",
+      "name": "ai_script_01",
+      "note": "-> AI script 1"
+    },
+    {
+      "offset": "0x2C",
+      "name": "ai_script_02",
+      "note": "-> AI script 2"
+    },
+    {
+      "offset": "0x30",
+      "name": "ai_script_03",
+      "note": "-> AI scripts (likely)"
+    },
+    {
+      "offset": "0x34",
+      "name": "ai_script_04",
+      "note": "-> AI script 3"
+    },
+    {
+      "offset": "0x38",
+      "name": "separation_blank",
+      "note": "padding/separator"
+    },
+    {
+      "offset": "0x3C",
+      "name": "separation_blank",
+      "note": "padding/separator"
+    }
+  ],
+  "pldat_sections": [
+    {
+      "name": "GFX1",
+      "file_suffix": "GFX_DATA_00",
+      "char_count": 60,
+      "layout": "u32 LE offset table -> variable-length 4bpp sprite PARTS (piece header [w_tiles][h_tiles][padded_w][padded_h]; transparency-aware 4bpp stream; idx0=transparent). ~1533 pieces in PL00. RLE control codec still unsolved."
+    },
+    {
+      "name": "GFX2",
+      "file_suffix": "GFX_DATA_01",
+      "char_count": 60,
+      "layout": "secondary GFX block (additional parts/cells); same offset-table + 4bpp part encoding as GFX1."
+    },
+    {
+      "name": "PALETTE",
+      "file_suffix": "PALETTE_DATA",
+      "char_count": 60,
+      "layout": "palette table: N rows x 16 colors x 2B ARGB4444 LE, idx0=transparent (PL00 = 57 palettes / 1824 B). Same banks as the PVR skin system."
+    },
+    {
+      "name": "ANIMATION",
+      "file_suffix": "ANIMATION_DATA",
+      "char_count": 60,
+      "layout": "0x000-0x3FF header w/ per-frame durations (03E8=1000); 0x400+ = u32 LE pointer table into EXTRAS (random-access frame index)."
+    },
+    {
+      "name": "EXTRAS",
+      "file_suffix": "EXTRAS_DATA",
+      "char_count": 60,
+      "layout": "sprite-assembly / OAM table: 8-byte records [x:s16][y:s16][tile:u16][attr:u16]; attr=0x00FF = frame terminator; attr bit15=h-flip; low byte = palette row. PL00 = 31 frames, 12-147 parts each."
+    },
+    {
+      "name": "HITBOX",
+      "file_suffix": "HITBOX_DATA",
+      "char_count": 60,
+      "layout": "hitbox data + HITBOX_PATTERN_TABLE; frame-accurate collision boxes."
+    },
+    {
+      "name": "ATTACK",
+      "file_suffix": "ATTACK_DATA",
+      "char_count": 60,
+      "layout": "per-frame attack / damage / properties data."
+    },
+    {
+      "name": "AI_SCRIPT",
+      "file_suffix": "AI_SCRIPT_DATA_00..04",
+      "char_count": 60,
+      "layout": "AI behaviour scripts (5 slots per character)."
+    }
+  ]
+}

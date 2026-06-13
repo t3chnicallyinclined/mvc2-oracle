@@ -1,0 +1,1217 @@
+{
+  "source": "marvelous2",
+  "marv_path": "C:\\Users\\trist\\projects\\maplecast-flycast\\_marv",
+  "fields": [
+    {
+      "name": "active",
+      "offset": "0x00",
+      "offset_int": 0,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "charid0",
+      "offset": "0x01",
+      "offset_int": 1,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unnamed_state",
+      "offset": "0x05",
+      "offset_int": 5,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Special_Move_State",
+      "offset": "0x06",
+      "offset_int": 6,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "mash_timer",
+      "offset": "0x1c",
+      "offset_int": 28,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "mash_counter",
+      "offset": "0x1e",
+      "offset_int": 30,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "airdash_direction",
+      "offset": "0x22",
+      "offset_int": 34,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "pl_palid_match",
+      "offset": "0x25",
+      "offset_int": 37,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "x_pos",
+      "offset": "0x34",
+      "offset_int": 52,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "y_pos",
+      "offset": "0x38",
+      "offset_int": 56,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "char_pal_effect",
+      "offset": "0x40",
+      "offset_int": 64,
+      "type": "word",
+      "note": "word"
+    },
+    {
+      "name": "x_sprite_scale",
+      "offset": "0x50",
+      "offset_int": 80,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "y_sprite_scale",
+      "offset": "0x54",
+      "offset_int": 84,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "z_sprite_scale",
+      "offset": "0x58",
+      "offset_int": 88,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "x_velocity",
+      "offset": "0x5c",
+      "offset_int": 92,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "y_velocity",
+      "offset": "0x60",
+      "offset_int": 96,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "JumpUNK",
+      "offset": "0x68",
+      "offset_int": 104,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "y_drag",
+      "offset": "0x6c",
+      "offset_int": 108,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "x_pos_screenspace",
+      "offset": "0xe0",
+      "offset_int": 224,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "y_pos_screenspace",
+      "offset": "0xe4",
+      "offset_int": 228,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "xflip_copy_2",
+      "offset": "0x110",
+      "offset_int": 272,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk_012c",
+      "offset": "0x012c",
+      "offset_int": 300,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "xflip_copy",
+      "offset": "0x130",
+      "offset_int": 304,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "anim_flags",
+      "offset": "0x014a",
+      "offset_int": 330,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "frame_count",
+      "offset": "0x0142",
+      "offset_int": 322,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "sprite_id",
+      "offset": "0x0144",
+      "offset_int": 324,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "current_cell_data",
+      "offset": "0x0154",
+      "offset_int": 340,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "anim_id",
+      "offset": "0x0158",
+      "offset_int": 344,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "anim_group",
+      "offset": "0x0158",
+      "offset_int": 344,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Dat_GFX1",
+      "offset": "0x015c",
+      "offset_int": 348,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "Dat_GFX2",
+      "offset": "0x0160",
+      "offset_int": 352,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "Dat_Pal",
+      "offset": "0x0164",
+      "offset_int": 356,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "animations",
+      "offset": "0x0168",
+      "offset_int": 360,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "hitbox_pattern_table",
+      "offset": "0x016c",
+      "offset_int": 364,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "hitbox_data",
+      "offset": "0x0170",
+      "offset_int": 368,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "attack_data",
+      "offset": "0x0174",
+      "offset_int": 372,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "Sprite_Extras",
+      "offset": "0x0178",
+      "offset_int": 376,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "Dat_FilePointer",
+      "offset": "0x017c",
+      "offset_int": 380,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "FAC_ptr",
+      "offset": "0x0184",
+      "offset_int": 388,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "attack_data_index",
+      "offset": "0x01a1",
+      "offset_int": 417,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "sp_move_strength",
+      "offset": "0x01a3",
+      "offset_int": 419,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "hitbox_group_index",
+      "offset": "0x01c0",
+      "offset_int": 448,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk_01d0",
+      "offset": "0x01d0",
+      "offset_int": 464,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "xflip",
+      "offset": "0x01d2",
+      "offset_int": 466,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk_01d3",
+      "offset": "0x01d3",
+      "offset_int": 467,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "special_move_jump_limiter",
+      "offset": "0x01d4",
+      "offset_int": 468,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "airdash_counter",
+      "offset": "0x01d5",
+      "offset_int": 469,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "normal_jump_action_counter",
+      "offset": "0x01d6",
+      "offset_int": 470,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "double_jump_counter",
+      "offset": "0x01d9",
+      "offset_int": 473,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "undizzy",
+      "offset": "0x01e1",
+      "offset_int": 481,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "undizzy_reset_timer",
+      "offset": "0x01e1",
+      "offset_int": 481,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "chain_strength",
+      "offset": "0x01e8",
+      "offset_int": 488,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "sp_move_id",
+      "offset": "0x01e9",
+      "offset_int": 489,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "throw_immunity",
+      "offset": "0x01eb",
+      "offset_int": 491,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "attack_immunity",
+      "offset": "0x01ed",
+      "offset_int": 493,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "disable_special_move_counter",
+      "offset": "0x01f2",
+      "offset_int": 498,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "disable_all_move_counter",
+      "offset": "0x01f3",
+      "offset_int": 499,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk_1f4",
+      "offset": "0x01f4",
+      "offset_int": 500,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "stance",
+      "offset": "0x01f9",
+      "offset_int": 505,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "superjump_state",
+      "offset": "0x01fc",
+      "offset_int": 508,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "corner_touching",
+      "offset": "0x01fd",
+      "offset_int": 509,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "limb_choice",
+      "offset": "0x01fe",
+      "offset_int": 510,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "in_air_normal",
+      "offset": "0x1ff",
+      "offset_int": 511,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Speed",
+      "offset": "0x0200",
+      "offset_int": 512,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Flight_Flag",
+      "offset": "0x0201",
+      "offset_int": 513,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_HyperArmor",
+      "offset": "0x0202",
+      "offset_int": 514,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Unk_03",
+      "offset": "0x0203",
+      "offset_int": 515,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Unk_04",
+      "offset": "0x0204",
+      "offset_int": 516,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Damage",
+      "offset": "0x0205",
+      "offset_int": 517,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Defense",
+      "offset": "0x0206",
+      "offset_int": 518,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "landing_screen_shake_strength",
+      "offset": "0x0207",
+      "offset_int": 519,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Unk_08",
+      "offset": "0x0208",
+      "offset_int": 520,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Unk_09",
+      "offset": "0x0209",
+      "offset_int": 521,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Unk_0a",
+      "offset": "0x020a",
+      "offset_int": 522,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "Buff_Unk_0b",
+      "offset": "0x020b",
+      "offset_int": 523,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "EnemyPointer",
+      "offset": "0x020c",
+      "offset_int": 524,
+      "type": "pointer",
+      "note": "pointer"
+    },
+    {
+      "name": "has_blocked_this_jump",
+      "offset": "0x0210",
+      "offset_int": 528,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "flying_screen_camera_follows",
+      "offset": "0x0235",
+      "offset_int": 565,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "air_hitstun_counter",
+      "offset": "0x0239",
+      "offset_int": 569,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "airthrow_protection_counter",
+      "offset": "0x023a",
+      "offset_int": 570,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk244",
+      "offset": "0x0244",
+      "offset_int": 580,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "dhc_move_id",
+      "offset": "0x0258",
+      "offset_int": 600,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk259",
+      "offset": "0x0259",
+      "offset_int": 601,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk270",
+      "offset": "0x0270",
+      "offset_int": 624,
+      "type": "byte",
+      "note": "word and byte"
+    },
+    {
+      "name": "unk275",
+      "offset": "0x0275",
+      "offset_int": 629,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "x_opponent_distance",
+      "offset": "0x0298",
+      "offset_int": 664,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "unk29e",
+      "offset": "0x029e",
+      "offset_int": 670,
+      "type": null,
+      "note": ""
+    },
+    {
+      "name": "snapout_disable_timer",
+      "offset": "0x02a0",
+      "offset_int": 672,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "unk_034e",
+      "offset": "0x034e",
+      "offset_int": 846,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "unk_0411",
+      "offset": "0x0411",
+      "offset_int": 1041,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "unk_041c_float",
+      "offset": "0x041c",
+      "offset_int": 1052,
+      "type": "float",
+      "note": "float"
+    },
+    {
+      "name": "health",
+      "offset": "0x0420",
+      "offset_int": 1056,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "health2",
+      "offset": "0x0424",
+      "offset_int": 1060,
+      "type": "int16",
+      "note": "int16"
+    },
+    {
+      "name": "UnkCpuData440",
+      "offset": "0x0440",
+      "offset_int": 1088,
+      "type": "word",
+      "note": "word"
+    },
+    {
+      "name": "assist_type",
+      "offset": "0x04c9",
+      "offset_int": 1225,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "is_cpu",
+      "offset": "0x0525",
+      "offset_int": 1317,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "pal_id",
+      "offset": "0x052d",
+      "offset_int": 1325,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "num_wins",
+      "offset": "0x540",
+      "offset_int": 1344,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "num_lose",
+      "offset": "0x541",
+      "offset_int": 1345,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "num_draw",
+      "offset": "0x542",
+      "offset_int": 1346,
+      "type": "byte",
+      "note": "byte"
+    },
+    {
+      "name": "handicap_level",
+      "offset": "0x543",
+      "offset_int": 1347,
+      "type": "byte",
+      "note": "byte"
+    }
+  ],
+  "roster": [
+    {
+      "name": "Ryu",
+      "char_id": "0x00"
+    },
+    {
+      "name": "Zangief",
+      "char_id": "0x01"
+    },
+    {
+      "name": "Guile",
+      "char_id": "0x02"
+    },
+    {
+      "name": "Morrigan",
+      "char_id": "0x03"
+    },
+    {
+      "name": "Anakaris",
+      "char_id": "0x04"
+    },
+    {
+      "name": "Strider",
+      "char_id": "0x05"
+    },
+    {
+      "name": "Cyclops",
+      "char_id": "0x06"
+    },
+    {
+      "name": "Wolverine",
+      "char_id": "0x07"
+    },
+    {
+      "name": "Psylocke",
+      "char_id": "0x08"
+    },
+    {
+      "name": "Iceman",
+      "char_id": "0x09"
+    },
+    {
+      "name": "Rogue",
+      "char_id": "0x0a"
+    },
+    {
+      "name": "CapAmerica",
+      "char_id": "0x0b"
+    },
+    {
+      "name": "Spiderman",
+      "char_id": "0x0c"
+    },
+    {
+      "name": "Hulk",
+      "char_id": "0x0d"
+    },
+    {
+      "name": "Venom",
+      "char_id": "0x0e"
+    },
+    {
+      "name": "DrDoom",
+      "char_id": "0x0f"
+    },
+    {
+      "name": "Tron",
+      "char_id": "0x10"
+    },
+    {
+      "name": "Jill",
+      "char_id": "0x11"
+    },
+    {
+      "name": "Hayato",
+      "char_id": "0x12"
+    },
+    {
+      "name": "Ruby",
+      "char_id": "0x13"
+    },
+    {
+      "name": "Sonson",
+      "char_id": "0x14"
+    },
+    {
+      "name": "Amingo",
+      "char_id": "0x15"
+    },
+    {
+      "name": "Marrow",
+      "char_id": "0x16"
+    },
+    {
+      "name": "Cable",
+      "char_id": "0x17"
+    },
+    {
+      "name": "Abyss_1",
+      "char_id": "0x18"
+    },
+    {
+      "name": "Abyss_2",
+      "char_id": "0x19"
+    },
+    {
+      "name": "Abyss_3",
+      "char_id": "0x1a"
+    },
+    {
+      "name": "Chunli",
+      "char_id": "0x1b"
+    },
+    {
+      "name": "Megaman",
+      "char_id": "0x1c"
+    },
+    {
+      "name": "Roll",
+      "char_id": "0x1d"
+    },
+    {
+      "name": "Akuma",
+      "char_id": "0x1e"
+    },
+    {
+      "name": "BBHood",
+      "char_id": "0x1f"
+    },
+    {
+      "name": "Felica",
+      "char_id": "0x20"
+    },
+    {
+      "name": "Charlie",
+      "char_id": "0x21"
+    },
+    {
+      "name": "Sakura",
+      "char_id": "0x22"
+    },
+    {
+      "name": "Dan",
+      "char_id": "0x23"
+    },
+    {
+      "name": "Cammy",
+      "char_id": "0x24"
+    },
+    {
+      "name": "Dhalsim",
+      "char_id": "0x25"
+    },
+    {
+      "name": "Dict",
+      "char_id": "0x26"
+    },
+    {
+      "name": "Ken",
+      "char_id": "0x27"
+    },
+    {
+      "name": "Gambit",
+      "char_id": "0x28"
+    },
+    {
+      "name": "Juggernaut",
+      "char_id": "0x29"
+    },
+    {
+      "name": "Storm",
+      "char_id": "0x2a"
+    },
+    {
+      "name": "Sabretooth",
+      "char_id": "0x2b"
+    },
+    {
+      "name": "Magneto",
+      "char_id": "0x2c"
+    },
+    {
+      "name": "Shuma",
+      "char_id": "0x2d"
+    },
+    {
+      "name": "War_Machine",
+      "char_id": "0x2e"
+    },
+    {
+      "name": "Silv_Samurai",
+      "char_id": "0x2f"
+    },
+    {
+      "name": "OmegaRed",
+      "char_id": "0x30"
+    },
+    {
+      "name": "Spiral",
+      "char_id": "0x31"
+    },
+    {
+      "name": "Colossus",
+      "char_id": "0x32"
+    },
+    {
+      "name": "Ironman",
+      "char_id": "0x33"
+    },
+    {
+      "name": "Sentinel",
+      "char_id": "0x34"
+    },
+    {
+      "name": "Blackheart",
+      "char_id": "0x35"
+    },
+    {
+      "name": "Thanos",
+      "char_id": "0x36"
+    },
+    {
+      "name": "Jin",
+      "char_id": "0x37"
+    },
+    {
+      "name": "CapCom",
+      "char_id": "0x38"
+    },
+    {
+      "name": "BoneWolv",
+      "char_id": "0x39"
+    },
+    {
+      "name": "Servbot",
+      "char_id": "0x3a"
+    }
+  ],
+  "pointers": [
+    {
+      "name": "player_start",
+      "addr": "0x8c268340",
+      "note": ""
+    },
+    {
+      "name": "player_start_charA",
+      "addr": "0x8c268340",
+      "note": "p1"
+    },
+    {
+      "name": "player_start_charB",
+      "addr": "0x8c2688e4",
+      "note": "p2"
+    },
+    {
+      "name": "player_start_charC",
+      "addr": "0x8c268e88",
+      "note": "p1"
+    },
+    {
+      "name": "player_start_charD",
+      "addr": "0x8c26942c",
+      "note": "p2"
+    },
+    {
+      "name": "player_start_charE",
+      "addr": "0x8c2699d0",
+      "note": "p1"
+    },
+    {
+      "name": "player_start_charF",
+      "addr": "0x8c269f74",
+      "note": "p2"
+    },
+    {
+      "name": "SPL_A_Jump_TBL",
+      "addr": "0x8c289bd8",
+      "note": "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+    },
+    {
+      "name": "SPL_B_Jump_TBL",
+      "addr": "0x8c289c58",
+      "note": ""
+    },
+    {
+      "name": "SPL_C_Jump_TBL",
+      "addr": "0x8c289cd8",
+      "note": ""
+    },
+    {
+      "name": "SPL_D_Jump_TBL",
+      "addr": "0x8c289d58",
+      "note": ""
+    },
+    {
+      "name": "SPL_E_Jump_TBL",
+      "addr": "0x8c289dd8",
+      "note": ""
+    },
+    {
+      "name": "SPL_F_Jump_TBL",
+      "addr": "0x8c289e58",
+      "note": ""
+    },
+    {
+      "name": "ptr_to_char_programming_A",
+      "addr": "0x0CE30000",
+      "note": "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV / pointer to where character programming gets loaded / see also loc_8c14E9F8 and loc_8c04f0ec"
+    },
+    {
+      "name": "ptr_to_char_programming_B",
+      "addr": "0x0CE38000",
+      "note": ""
+    },
+    {
+      "name": "ptr_to_char_programming_C",
+      "addr": "0x0CE40000",
+      "note": ""
+    },
+    {
+      "name": "ptr_to_char_programming_D",
+      "addr": "0x0CE48000",
+      "note": ""
+    },
+    {
+      "name": "ptr_to_char_programming_E",
+      "addr": "0x0CE50000",
+      "note": ""
+    },
+    {
+      "name": "ptr_to_char_programming_F",
+      "addr": "0x0CE58000",
+      "note": ""
+    },
+    {
+      "name": "pl_A_datfile",
+      "addr": "0x0c420000",
+      "note": "P1 C1"
+    },
+    {
+      "name": "pl_A_FACfile",
+      "addr": "0x0c568000",
+      "note": ""
+    },
+    {
+      "name": "pl_C_datfile",
+      "addr": "0x0c570000",
+      "note": "P1 C2"
+    },
+    {
+      "name": "pl_C_FACfile",
+      "addr": "0x0C6B8000",
+      "note": ""
+    },
+    {
+      "name": "pl_E_datfile",
+      "addr": "0x0c6c0000",
+      "note": "P1 C3"
+    },
+    {
+      "name": "pl_E_FACfile",
+      "addr": "0x0c808000",
+      "note": ""
+    },
+    {
+      "name": "pl_B_datfile",
+      "addr": "0x0c810000",
+      "note": "P2 C1"
+    },
+    {
+      "name": "pl_B_FACfile",
+      "addr": "0x0c958000",
+      "note": ""
+    },
+    {
+      "name": "pl_D_datfile",
+      "addr": "0x0c960000",
+      "note": "P2 C2"
+    },
+    {
+      "name": "pl_D_FACfile",
+      "addr": "0x0caa8000",
+      "note": ""
+    },
+    {
+      "name": "pl_F_datfile",
+      "addr": "0x0cab0000",
+      "note": "P2 C3"
+    },
+    {
+      "name": "pl_F_FACfile",
+      "addr": "0x0cbf8000",
+      "note": ""
+    }
+  ],
+  "globals": [
+    {
+      "name": "GameGlobalPointer",
+      "addr": "0x8c26823c",
+      "note": ""
+    },
+    {
+      "name": "GameGlobalStart",
+      "addr": "0x8c268240",
+      "note": "???"
+    },
+    {
+      "name": "STG_ID",
+      "addr": "0x8c26A95C",
+      "note": "0x8C26A8C8 Abyss Stage Flag"
+    },
+    {
+      "name": "Charsel_Input",
+      "addr": "0x8c28c474",
+      "note": "=============================================================================="
+    }
+  ],
+  "stages": [
+    {
+      "name": "stg_AirS1",
+      "stage_id": "0x00",
+      "note": "Air Ship"
+    },
+    {
+      "name": "stg_Dsrt1",
+      "stage_id": "0x01",
+      "note": "Desert"
+    },
+    {
+      "name": "stg_Fctry",
+      "stage_id": "0x02",
+      "note": "Factory"
+    },
+    {
+      "name": "stg_Carn1",
+      "stage_id": "0x03",
+      "note": "Carnival"
+    },
+    {
+      "name": "stg_Swmp1",
+      "stage_id": "0x04",
+      "note": "Swamp"
+    },
+    {
+      "name": "stg_Cave1",
+      "stage_id": "0x05",
+      "note": "Blue Cave"
+    },
+    {
+      "name": "stg_Clck1",
+      "stage_id": "0x06",
+      "note": "Clock"
+    },
+    {
+      "name": "stg_Raft1",
+      "stage_id": "0x07",
+      "note": "Ice River"
+    },
+    {
+      "name": "stg_Abyss",
+      "stage_id": "0x08",
+      "note": "Abyss"
+    },
+    {
+      "name": "stg_AirS2",
+      "stage_id": "0x09",
+      "note": "Alt AirShip"
+    },
+    {
+      "name": "stg_Dsrt2",
+      "stage_id": "0x0A",
+      "note": "Alt Desert"
+    },
+    {
+      "name": "stg_Train",
+      "stage_id": "0x0B",
+      "note": "Training"
+    },
+    {
+      "name": "stg_Carn2",
+      "stage_id": "0x0C",
+      "note": "Alt Carnival"
+    },
+    {
+      "name": "stg_Swmp2",
+      "stage_id": "0x0D",
+      "note": "Pink Swamp"
+    },
+    {
+      "name": "stg_Cave2",
+      "stage_id": "0x0E",
+      "note": "Lava Cave"
+    },
+    {
+      "name": "stg_Clck2",
+      "stage_id": "0x0F",
+      "note": "Winter Clock"
+    },
+    {
+      "name": "stg_Raft2",
+      "stage_id": "0x10",
+      "note": "River Raft"
+    }
+  ]
+}
