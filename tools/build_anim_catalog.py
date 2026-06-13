@@ -57,7 +57,15 @@ def build_char(plx, cache, data, out):
         g = int(m.group(1))
         subs = parse_group_file(f)
         if not subs: continue
-        groups[str(g)] = {"name": names.get(g, f"group {g}"),
+        # classify by sprite_id range (mvc2-sh4-re-expert): body ~61-160, special/projectile ~180+,
+        # effect = any raw bit15 (0x8000 per-part-scale dispatch). 0xFFFF = blank, skip.
+        sids = [k["sprite_id"] for s in subs for k in s if k["sprite_id"] != 0xFFFF]
+        masked = [x & 0x7FFF for x in sids]
+        scaled = any(x & 0x8000 for x in sids)
+        smin, smax = (min(masked), max(masked)) if masked else (0, 0)
+        kind = "effect" if scaled else ("special" if smax >= 180 else "body")
+        groups[str(g)] = {"name": names.get(g, f"group {g}"), "kind": kind,
+                          "sidRange": [smin, smax],
                           "subanims": [{"cells": s} for s in subs]}
     cat = {"char_id": cid, "name": charname or plx, "groups": groups}
     os.makedirs(out, exist_ok=True)
