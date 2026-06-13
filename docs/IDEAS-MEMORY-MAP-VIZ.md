@@ -127,8 +127,10 @@ label chain (region → struct → field → anotak meaning + units); filter to 
   block. 16 MB at 1 B/px is a single 4096² texture — cheap; updates are sparse (dirty set only).
 
 ## Open questions / risks
-- Does the replica/state-sync path expose **main-RAM dirty pages**, or only VRAM? (Determines whether
-  the "what changed in RAM" view is free or needs a new feed.) — confirm in the MapleCast wire code.
+- ~~Does the replica/state-sync path expose main-RAM dirty pages?~~ **RESOLVED** (audit): VRAM dirty pages
+  are FREE (`serverPublish()` memcmp + DMA bitmap); **main-RAM dirty tracking does NOT exist** (explicitly
+  skipped) but the `RamWatcher` page-protect machinery already exists for GGPO, so it's a small add. Full-RAM
+  snapshot baseline is free (`buildFullSaveState()`). See **`WORKSTREAM-MEMORY-MAP.md`** for the build plan.
 - Access-type capture cost: full read/write tracing may be too heavy for 60 fps live — sampling or a
   "record-then-scrub" mode (capture access events to a file, visualize offline) may be the realistic path.
 - Hilbert mapping + arbitrary block size needs a clean address↔pixel function (precompute a LUT).
