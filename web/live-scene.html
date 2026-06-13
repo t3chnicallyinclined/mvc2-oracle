@@ -11,15 +11,19 @@
   .main { display:flex; gap:12px; padding:12px; align-items:flex-start; }
   .stage { position:relative; flex:0 0 auto; line-height:0; }
   canvas#scene { display:block; border:1px solid var(--line); background:#101018; image-rendering:pixelated; cursor:pointer; }
-  /* data OVERLAYS the canvas (right-docked, semi-transparent) so you see the game + inspect at once */
-  .ov { position:absolute; right:6px; background:rgba(13,14,18,.80); border:1px solid var(--line); border-radius:6px;
-        padding:6px 8px; font-size:11px; line-height:1.4; backdrop-filter:blur(2px); }
-  #ovObj { top:6px; width:226px; max-height:172px; overflow:auto; }
-  #ovInsp { top:186px; bottom:6px; width:226px; overflow:auto; }
-  .ov.hide { display:none; }
-  .ov h3 { margin:0 0 4px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);
-           display:flex; justify-content:space-between; align-items:center; position:sticky; top:-6px; background:rgba(13,14,18,.92); }
-  .ov .x { color:var(--dim); cursor:pointer; padding:0 2px; }
+  /* three DRAGGABLE data panels overlay the canvas: P1 (left) · shared (center) · P2 (right) */
+  .ovp { position:absolute; width:200px; background:rgba(13,14,18,.82); border:1px solid var(--line); border-radius:6px;
+         font-size:11px; line-height:1.4; backdrop-filter:blur(2px); max-height:calc(100% - 12px); overflow:auto; }
+  #ovP1 { top:6px; left:6px; } #ovP2 { top:6px; right:6px; } #ovShared { top:6px; left:calc(50% - 100px); }
+  .ovp.hide { display:none; }
+  .ovp h3 { margin:0; padding:4px 8px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);
+            cursor:move; user-select:none; position:sticky; top:0; background:rgba(13,14,18,.95);
+            display:flex; justify-content:space-between; align-items:center; }
+  .ovp .x { cursor:pointer; padding:0 2px; } .ovp .body { padding:4px 8px; }
+  .fighter { padding:3px 4px; border-radius:4px; cursor:pointer; margin-bottom:2px; }
+  .fighter:hover { background:#1d2129; } .fighter.sel { outline:1px solid var(--hot); }
+  .fighter .nm { color:var(--ink); } .fighter .hot { color:#fff; background:#3a3410; border-radius:2px; padding:0 2px; }
+  .fighter .lo { color:var(--dim); }
   .side { flex:0 0 332px; max-height:calc(100vh - 58px); overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
   .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 8px; }
@@ -44,19 +48,16 @@
 <div class="main">
   <div class="stage">
     <canvas id="scene" width="640" height="480"></canvas>
-    <div class="ov" id="ovObj">
-      <h3><span>on screen <span id="objn"></span></span><span class="x" id="xObj">×</span></h3>
-      <div id="objlist">—</div>
-    </div>
-    <div class="ov" id="ovInsp">
-      <h3><span>inspect — <span id="isel">click a fighter</span> <span id="chg"></span></span><span class="x" id="xInsp">×</span></h3>
-      <div id="fields" class="dim">live char-struct fields (real from the wire; — = not streamed)</div>
-    </div>
+    <div class="ovp" id="ovP1"><h3>P1 data<span class="x" data-t="P1">×</span></h3><div class="body dim" id="p1body">—</div></div>
+    <div class="ovp" id="ovShared"><h3>match / shared<span class="x" data-t="Shared">×</span></h3><div class="body" id="shbody">—</div></div>
+    <div class="ovp" id="ovP2"><h3>P2 data<span class="x" data-t="P2">×</span></h3><div class="body dim" id="p2body">—</div></div>
   </div>
   <div class="side">
     <div class="toggles">
-      <label><input type="checkbox" id="tObj" checked> objects overlay</label>
-      <label><input type="checkbox" id="tInsp" checked> inspector overlay</label>
+      <label><input type="checkbox" id="tP1" checked> P1</label>
+      <label><input type="checkbox" id="tShared" checked> shared</label>
+      <label><input type="checkbox" id="tP2" checked> P2</label>
+      <span class="dim">(drag panels by title)</span>
     </div>
     <div class="card">
       <h2>Connection</h2>
@@ -110,13 +111,13 @@
     facing:'facing', sprite_id:'sprite_id', RenderExtra:'render_extra', xflip:'facing_1d2',
     stance:'stance', flight_flag:'flight_flag', health:'health', red_health:'red_health' };
 
-  let sel = 0, prev = {}, chgCount = 0;
+  let sel = 0;
   const S = id => document.getElementById(id);
 
   // slot buttons
   const slotsEl = S('slots');
   SLOT_NAMES.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => selectSlot(i); slotsEl.append(b); });
-  function selectSlot(i) { sel = i; prev = {}; document.querySelectorAll('#slots button').forEach((b, k) => b.classList.toggle('sel', k === i)); renderInspector(); updateAnim(true); }
+  function selectSlot(i) { sel = i; document.querySelectorAll('#slots button').forEach((b, k) => b.classList.toggle('sel', k === i)); renderPlayers(); updateAnim(true); }
 
   // --- animation player for the SELECTED LIVE FIGHTER (its real char_id -> catalog + atlas) ---
   const preview = new SpritePreview(document.getElementById('preview'), { scale: 1 });
@@ -155,26 +156,52 @@
     mirror.checked = false; groupsel.value = String(m[0]); fillSubs(); subsel.value = m[1];
     preview.playAnim(curCid, sub.cells, { charName: curCat.name }, 1); });
 
-  function renderInspector() {
-    const sl = client.slot?.[sel];
-    const cid = sl?.char_id ?? 0;
-    S('isel').textContent = `${SLOT_NAMES[sel]} — ${sl?.active ? (insp.roster['0x'+cid.toString(16).toUpperCase()] || 'PL'+cid.toString(16)) : 'inactive'}`;
-    let chg = 0;
-    const rows = insp.fields('char_struct').map(f => {
-      const prop = WIRE[f.name];
-      let disp = '—', live = false, changed = false;
-      if (prop && sl && sl[prop] !== undefined) {
-        live = true; const v = sl[prop]; disp = insp.format(f, v);
-        if (prev[f.name] !== undefined && prev[f.name] !== v) { changed = true; chg++; }
-        prev[f.name] = v;
-      }
-      const cls = f.class === 'engine' ? 'eng' : '';
-      const lock = f.editable ? '' : '🔒';
-      return `<tr class="${cls}${changed ? ' chg' : ''}"><td class="off">+0x${parseInt(f.off,16).toString(16).toUpperCase()}</td><td>${f.name}</td><td class="${live ? 'val' : 'na'}">${disp}</td><td>${lock}</td></tr>`;
-    }).join('');
-    S('fields').innerHTML = `<table><thead><tr><th>off</th><th>field</th><th>value</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-    if (chg) { chgCount = chg; S('chg').textContent = `${chg} changed`; }
+  // --- P1 / shared / P2 panels (fighters by player, live values + change-heat) ---
+  const nm = cid => insp.roster['0x' + (cid ?? 0).toString(16).toUpperCase()] || ('PL' + (cid ?? 0).toString(16));
+  const hx = n => '0x' + (n >>> 0).toString(16).toUpperCase();
+  const byName = {}; insp.fields('char_struct').forEach(f => byName[f.name] = f);
+  const prevV = Array.from({ length: 6 }, () => ({}));
+  const COMPACT = ['health', 'red_health', 'sprite_id', 'facing', 'pos_x', 'stance', 'anim_timer'];
+  const slotVal = (i, fn) => { const p = WIRE[fn], s = client.slot?.[i]; return (p && s && s[p] !== undefined) ? s[p] : undefined; };
+  function kv(i, fn) {
+    const f = byName[fn], v = slotVal(i, fn); if (v === undefined) return '';
+    const changed = prevV[i][fn] !== undefined && prevV[i][fn] !== v; prevV[i][fn] = v;
+    return `<span class="lo">${fn.replace(/_/g, ' ')}:</span><span class="${changed ? 'hot' : ''}">${insp.format(f, v)}</span>`;
   }
+  function fullTable(i) {
+    const s = client.slot?.[i];
+    const rows = insp.fields('char_struct').map(f => { const p = WIRE[f.name]; let d = '—', live = false;
+      if (p && s && s[p] !== undefined) { live = true; d = insp.format(f, s[p]); }
+      return `<tr class="${f.class === 'engine' ? 'eng' : ''}"><td class="off">+0x${parseInt(f.off, 16).toString(16).toUpperCase()}</td><td>${f.name}</td><td class="${live ? 'val' : 'na'}">${d}</td><td>${f.editable ? '' : '🔒'}</td></tr>`; }).join('');
+    return `<table style="margin-top:3px"><tbody>${rows}</tbody></table>`;
+  }
+  function fighterBlock(i) {
+    const s = client.slot?.[i]; if (!s?.active) return '';
+    const compact = COMPACT.map(fn => kv(i, fn)).filter(Boolean).join(' · ');
+    return `<div class="fighter ${sel === i ? 'sel' : ''}" data-slot="${i}">
+      <div class="nm">${SLOT_NAMES[i]} <b>${nm(s.char_id)}</b></div>
+      <div>${compact}</div>${sel === i ? fullTable(i) : '<div class="lo" style="font-size:10px">click for all fields</div>'}</div>`;
+  }
+  function renderPlayers() {
+    S('p1body').innerHTML = [0, 2, 4].map(fighterBlock).filter(Boolean).join('') || '<span class="dim">no P1 on screen</span>';
+    S('p2body').innerHTML = [1, 3, 5].map(fighterBlock).filter(Boolean).join('') || '<span class="dim">no P2 on screen</span>';
+  }
+  function renderShared() {
+    const objs = (client.objects || []).map(o => `<div><span style="color:${o.isEffect ? '#ff9b50' : '#9fb0c8'}">${o.isEffect ? 'fx ' : 'sat'}</span> ${nm(o.cid)} ${hx(o.sid)} (${o.x | 0},${o.y | 0})${o.hasHot ? ` hot(${o.hotDx},${o.hotDy})` : ''}</div>`).join('');
+    S('shbody').innerHTML = `<div class="lo">objects: ${(client.objects || []).length} · GSTA ${ng} · ${(wB / 1024).toFixed(1)} KB/s</div>${objs || '<span class="dim">no objects</span>'}`;
+  }
+  ['p1body', 'p2body'].forEach(id => S(id).addEventListener('click', e => { const f = e.target.closest('.fighter'); if (f) selectSlot(+f.dataset.slot); }));
+  // draggable panels (drag by the title bar)
+  function makeDraggable(panel) {
+    const h = panel.querySelector('h3'); let drag = false, sx, sy, ox, oy;
+    h.addEventListener('mousedown', e => { if (e.target.classList.contains('x')) return; drag = true;
+      const pr = panel.offsetParent.getBoundingClientRect(), r = panel.getBoundingClientRect();
+      ox = r.left - pr.left; oy = r.top - pr.top; sx = e.clientX; sy = e.clientY;
+      panel.style.left = ox + 'px'; panel.style.top = oy + 'px'; panel.style.right = 'auto'; e.preventDefault(); });
+    window.addEventListener('mousemove', e => { if (!drag) return; panel.style.left = (ox + e.clientX - sx) + 'px'; panel.style.top = (oy + e.clientY - sy) + 'px'; });
+    window.addEventListener('mouseup', () => drag = false);
+  }
+  ['ovP1', 'ovShared', 'ovP2'].forEach(id => makeDraggable(S(id)));
 
   // connection
   const override = new URLSearchParams(location.search).get('ws');
@@ -209,12 +236,9 @@
   S('leave').onclick = () => pad.leave();
   setInterval(() => { const id = pad.padId(); S('pad').textContent = id ? id.slice(0, 26) : 'none (press a button)'; }, 1000);
 
-  // --- overlay toggles (show/hide the canvas data overlays) ---
-  const ovToggle = (ov, on) => S(ov).classList.toggle('hide', !on);
-  S('tObj').onchange = e => ovToggle('ovObj', e.target.checked);
-  S('tInsp').onchange = e => ovToggle('ovInsp', e.target.checked);
-  S('xObj').onclick = () => { S('tObj').checked = false; ovToggle('ovObj', false); };
-  S('xInsp').onclick = () => { S('tInsp').checked = false; ovToggle('ovInsp', false); };
+  // --- panel toggles (P1 / shared / P2) ---
+  ['P1', 'Shared', 'P2'].forEach(t => { S('t' + t).onchange = e => S('ov' + t).classList.toggle('hide', !e.target.checked); });
+  document.querySelectorAll('.ovp .x').forEach(x => x.onclick = () => { const t = x.dataset.t; S('t' + t).checked = false; S('ov' + t).classList.add('hide'); });
 
   // canvas click -> nearest active fighter (by screen anchor)
   cv.addEventListener('click', e => {
@@ -224,28 +248,14 @@
     if (best >= 0) selectSlot(best);
   });
 
-  // render loop: scene + live inspector
-  // live list of everything on screen: bodies (GSTA slots) + objects (OBJS: capes/projectiles/effects)
-  const nm = cid => insp.roster['0x' + (cid ?? 0).toString(16).toUpperCase()] || ('PL' + (cid ?? 0).toString(16));
-  const hx = n => '0x' + (n >>> 0).toString(16).toUpperCase();
-  function renderObjects() {
-    const rows = [];
-    for (let i = 0; i < 6; i++) { const s = client.slot?.[i]; if (s?.active)
-      rows.push(`<div><span style="color:#7ee787">body</span> ${SLOT_NAMES[i]} <b>${nm(s.char_id)}</b> sid=${hx(s.sprite_id)} (${s.screen_x|0},${s.screen_y|0})</div>`); }
-    for (const o of (client.objects || []))
-      rows.push(`<div><span style="color:${o.isEffect?'#ff9b50':'#9fb0c8'}">${o.isEffect?'fx ':'sat'}</span> ${nm(o.cid)} sid=${hx(o.sid)} t${o.type} (${o.x|0},${o.y|0})${o.hasHot?` hot(${o.hotDx},${o.hotDy})`:''}</div>`);
-    S('objlist').innerHTML = rows.join('') || '<span class="dim">none</span>';
-    S('objn').textContent = String(rows.length);
-  }
-
   let tick = 0;
   function loop() {
     ctx.clearRect(0,0,cv.width,cv.height); ctx.fillStyle = '#101018'; ctx.fillRect(0,0,cv.width,cv.height);
     try { client.render(ctx); } catch (e) {}
     S('no').textContent = client.objects?.length ?? 0;
     if (++tick % 4 === 0) {                       // ~15 Hz: inspector + objects + catalog + mirror-live pose
-      renderInspector();
-      renderObjects();
+      renderPlayers();
+      renderShared();
       updateAnim(false);
       const sl = client.slot?.[sel];
       if (mirror.checked && curCid >= 0 && sl?.active) { preview.stop(); preview.show(curCid, sl.sprite_id, { charName: curCat?.name }); }
