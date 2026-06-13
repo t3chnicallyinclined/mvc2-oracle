@@ -10,9 +10,10 @@
   header h1 { font-size:14px; margin:0; } header .sub { color:var(--dim); font-size:11px; }
   /* P1 data | CANVAS | P2 data (flanking the game), everything else below */
   .top { display:flex; gap:10px; padding:12px 12px 0; align-items:stretch; justify-content:center; flex-wrap:nowrap; }
-  .pcol { flex:0 0 230px; max-height:482px; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:11px; line-height:1.45; }
+  .pcol { flex:0 0 322px; max-height:482px; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:11px; line-height:1.4; }
   .pcol > h3 { margin:0; padding:6px 10px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); }
-  .pcol .body { padding:6px 10px; }
+  .pcol .body { padding:6px 8px; }
+  .pcol table { font-size:10.5px; } .pcol td { padding:0 5px 0 0; } .pcol td:last-child { padding-right:0; }
   .stage { flex:0 0 auto; line-height:0; }
   canvas#scene { display:block; border:1px solid var(--line); background:#101018; image-rendering:pixelated; cursor:pointer; }
   .bottom { display:flex; flex-wrap:wrap; gap:10px; padding:12px; align-items:flex-start; }
