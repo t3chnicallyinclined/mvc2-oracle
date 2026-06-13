@@ -66,6 +66,13 @@ Two wire modes (env/handshake-selected):
 - **B2.** HEAT-mode encoding (page index + changed-byte-count/hash only).
 - **B3.** MMBASE baseline transport (reuse the SYNC/MCSV full-snapshot path).
 
+### Track C0 — Preserve the RE debugger (do this when the dashboard shell lands)
+**Port the DIFF-v7 / RE COCKPIT from `web/webgpu-test.html` verbatim** into clean panel modules
+(`diff-panel.mjs` = `diffTick`/`objDeltas`/`alignHost`; `etl-panel.mjs` = `classify()`), including the
+**WebGPU mirror-canvas readback fix**. It's the most battle-tested code we have for "what's on screen and
+who owns it"; the Linked View (`IDEAS-LINKED-VIEW.md`) re-keys its tint from truth-vs-ours to object-identity.
+Don't re-derive it.
+
 ### Track C — Frontend panel (`web/panels/memmap-panel.mjs`)
 - **C1.** Frame-bus integration: apply MMBASE then per-frame dirty deltas into a sparse client memory model.
 - **C2.** Address→(x,y) LUT: region tree (from `re_kb`) → squarified treemap → Hilbert/Gilbert per box
