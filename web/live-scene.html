@@ -8,26 +8,20 @@
   body { margin:0; background:var(--bg); color:var(--ink); font:13px/1.4 ui-monospace,Menlo,Consolas,monospace; }
   header { padding:8px 16px; border-bottom:1px solid var(--line); display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
   header h1 { font-size:14px; margin:0; } header .sub { color:var(--dim); font-size:11px; }
-  .main { display:flex; gap:12px; padding:12px; align-items:flex-start; }
-  .stage { position:relative; flex:0 0 auto; line-height:0; }
+  /* P1 data | CANVAS | P2 data (flanking the game), everything else below */
+  .top { display:flex; gap:10px; padding:12px 12px 0; align-items:stretch; justify-content:center; flex-wrap:nowrap; }
+  .pcol { flex:0 0 230px; max-height:482px; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; font-size:11px; line-height:1.45; }
+  .pcol > h3 { margin:0; padding:6px 10px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); }
+  .pcol .body { padding:6px 10px; }
+  .stage { flex:0 0 auto; line-height:0; }
   canvas#scene { display:block; border:1px solid var(--line); background:#101018; image-rendering:pixelated; cursor:pointer; }
-  /* three DRAGGABLE data panels overlay the canvas: P1 (left) · shared (center) · P2 (right) */
-  .ovp { position:absolute; width:200px; background:rgba(13,14,18,.82); border:1px solid var(--line); border-radius:6px;
-         font-size:11px; line-height:1.4; backdrop-filter:blur(2px); max-height:calc(100% - 12px); overflow:auto; }
-  #ovP1 { top:6px; left:6px; } #ovP2 { top:6px; right:6px; } #ovShared { top:6px; left:calc(50% - 100px); }
-  .ovp.hide { display:none; }
-  .ovp h3 { margin:0; padding:4px 8px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);
-            cursor:move; user-select:none; position:sticky; top:0; background:rgba(13,14,18,.95);
-            display:flex; justify-content:space-between; align-items:center; }
-  .ovp .x { cursor:pointer; padding:0 2px; } .ovp .body { padding:4px 8px; }
-  .fighter { padding:3px 4px; border-radius:4px; cursor:pointer; margin-bottom:2px; }
-  .fighter:hover { background:#1d2129; } .fighter.sel { outline:1px solid var(--hot); }
+  .bottom { display:flex; flex-wrap:wrap; gap:10px; padding:12px; align-items:flex-start; }
+  .fighter { padding:3px 4px; border-radius:4px; cursor:pointer; margin-bottom:3px; border:1px solid transparent; }
+  .fighter:hover { background:#1d2129; } .fighter.sel { border-color:var(--hot); }
   .fighter .nm { color:var(--ink); } .fighter .hot { color:#fff; background:#3a3410; border-radius:2px; padding:0 2px; }
   .fighter .lo { color:var(--dim); }
-  .side { flex:0 0 332px; max-height:calc(100vh - 58px); overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; min-width:240px; }
   .card h2 { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:0 0 8px; }
-  .toggles { display:flex; gap:12px; font-size:11px; color:var(--dim); }
   input { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 9px; font:inherit; width:200px; }
   button { background:#232732; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 9px; cursor:pointer; font:inherit; }
   button:hover { background:#2c313e; } button.sel { border-color:var(--hot); color:var(--hot); }
@@ -45,50 +39,45 @@
   <h1>LIVE SCENE + INSPECTOR</h1>
   <span class="sub">prod GSTA/OBJS → bodies + projectiles + effects; click a fighter for its live struct fields</span>
 </header>
-<div class="main">
-  <div class="stage">
-    <canvas id="scene" width="640" height="480"></canvas>
-    <div class="ovp" id="ovP1"><h3>P1 data<span class="x" data-t="P1">×</span></h3><div class="body dim" id="p1body">—</div></div>
-    <div class="ovp" id="ovShared"><h3>match / shared<span class="x" data-t="Shared">×</span></h3><div class="body" id="shbody">—</div></div>
-    <div class="ovp" id="ovP2"><h3>P2 data<span class="x" data-t="P2">×</span></h3><div class="body dim" id="p2body">—</div></div>
+<div class="top">
+  <div class="pcol"><h3>P1 data</h3><div class="body dim" id="p1body">—</div></div>
+  <div class="stage"><canvas id="scene" width="640" height="480"></canvas></div>
+  <div class="pcol"><h3>P2 data</h3><div class="body dim" id="p2body">—</div></div>
+</div>
+<div class="bottom">
+  <div class="card">
+    <h2>Connection</h2>
+    <div><input id="url"> <button id="conn">connect</button></div>
+    <div style="margin-top:6px">status: <span id="status">idle</span></div>
+    <div class="counts" style="margin-top:8px"><b>frames</b><span id="nf">0</span><b>KB/s</b><span id="kb">0</span><b>GSTA</b><span id="ng">0</span><b>objs</b><span id="no">0</span></div>
   </div>
-  <div class="side">
-    <div class="toggles">
-      <label><input type="checkbox" id="tP1" checked> P1</label>
-      <label><input type="checkbox" id="tShared" checked> shared</label>
-      <label><input type="checkbox" id="tP2" checked> P2</label>
-      <span class="dim">(drag panels by title)</span>
+  <div class="card">
+    <h2>Controller</h2>
+    <div class="row"><input id="curl" placeholder="control WS (blank = prod /play)" style="width:200px"></div>
+    <div class="row" style="margin-top:6px">
+      <button id="joinP1">🎮 JOIN P1</button><button id="joinP2">🎮 JOIN P2</button><button id="leave">leave</button>
     </div>
-    <div class="card">
-      <h2>Connection</h2>
-      <div><input id="url"> <button id="conn">connect</button></div>
-      <div style="margin-top:6px">status: <span id="status">idle</span></div>
-      <div class="counts" style="margin-top:8px"><b>frames</b><span id="nf">0</span><b>KB/s</b><span id="kb">0</span><b>GSTA</b><span id="ng">0</span><b>objs</b><span id="no">0</span></div>
+    <div style="margin-top:6px">pad: <span id="pad" class="dim">none</span> · <span id="cstat" class="dim">idle</span></div>
+    <div class="dim" style="font-size:11px;margin-top:4px">Local instance: enter <code>ws://localhost:PORT/play</code>. X/Y=LP/HP · A/B=LK/HK · RB/LB=A1/A2 · D-pad/stick=move.</div>
+  </div>
+  <div class="card">
+    <h2>Match / shared — objects</h2>
+    <div id="shbody" style="font-size:11px; min-width:220px">—</div>
+  </div>
+  <div class="card">
+    <h2>Fighter</h2>
+    <div class="slots" id="slots"></div>
+  </div>
+  <div class="card">
+    <h2>Animation — <span id="asel" class="dim">—</span></h2>
+    <canvas id="preview" width="240" height="300" style="background:#000;border:1px solid var(--line);display:block"></canvas>
+    <div class="row" style="margin-top:6px">
+      <select id="groupsel"></select><select id="subsel"></select><button id="anim" title="play">▶</button>
+      <label style="font-size:11px"><input type="checkbox" id="mirror" checked> mirror live pose</label>
     </div>
-    <div class="card">
-      <h2>Controller</h2>
-      <div class="row"><input id="curl" placeholder="control WS (blank = prod /play)" style="width:200px"></div>
-      <div class="row" style="margin-top:6px">
-        <button id="joinP1">🎮 JOIN P1</button><button id="joinP2">🎮 JOIN P2</button><button id="leave">leave</button>
-      </div>
-      <div style="margin-top:6px">pad: <span id="pad" class="dim">none</span> · <span id="cstat" class="dim">idle</span></div>
-      <div class="dim" style="font-size:11px;margin-top:4px">Local instance: enter <code>ws://localhost:PORT/play</code>. X/Y=LP/HP · A/B=LK/HK · RB/LB=A1/A2 · D-pad/stick=move.</div>
-    </div>
-    <div class="card">
-      <h2>Fighter</h2>
-      <div class="slots" id="slots"></div>
-    </div>
-    <div class="card">
-      <h2>Animation — <span id="asel" class="dim">—</span></h2>
-      <canvas id="preview" width="240" height="300" style="background:#000;border:1px solid var(--line);display:block"></canvas>
-      <div class="row" style="margin-top:6px">
-        <select id="groupsel"></select><select id="subsel"></select><button id="anim" title="play">▶</button>
-        <label style="font-size:11px"><input type="checkbox" id="mirror" checked> mirror live pose</label>
-      </div>
-      <div class="row" style="margin-top:4px"><span class="dim" style="font-size:11px">export:</span>
-        <button id="exgif">GIF</button><button id="exwebm">WebM</button><button id="exsheet">sheet</button></div>
-      <div class="dim" style="font-size:11px;margin-top:4px">keys: A/D walk · W jump · S crouch · J/K/L punch · U/I/O kick · F special</div>
-    </div>
+    <div class="row" style="margin-top:4px"><span class="dim" style="font-size:11px">export:</span>
+      <button id="exgif">GIF</button><button id="exwebm">WebM</button><button id="exsheet">sheet</button></div>
+    <div class="dim" style="font-size:11px;margin-top:4px">keys: A/D walk · W jump · S crouch · J/K/L punch · U/I/O kick · F special</div>
   </div>
 </div>
 
@@ -191,17 +180,6 @@
     S('shbody').innerHTML = `<div class="lo">objects: ${(client.objects || []).length} · GSTA ${ng} · ${(wB / 1024).toFixed(1)} KB/s</div>${objs || '<span class="dim">no objects</span>'}`;
   }
   ['p1body', 'p2body'].forEach(id => S(id).addEventListener('click', e => { const f = e.target.closest('.fighter'); if (f) selectSlot(+f.dataset.slot); }));
-  // draggable panels (drag by the title bar)
-  function makeDraggable(panel) {
-    const h = panel.querySelector('h3'); let drag = false, sx, sy, ox, oy;
-    h.addEventListener('mousedown', e => { if (e.target.classList.contains('x')) return; drag = true;
-      const pr = panel.offsetParent.getBoundingClientRect(), r = panel.getBoundingClientRect();
-      ox = r.left - pr.left; oy = r.top - pr.top; sx = e.clientX; sy = e.clientY;
-      panel.style.left = ox + 'px'; panel.style.top = oy + 'px'; panel.style.right = 'auto'; e.preventDefault(); });
-    window.addEventListener('mousemove', e => { if (!drag) return; panel.style.left = (ox + e.clientX - sx) + 'px'; panel.style.top = (oy + e.clientY - sy) + 'px'; });
-    window.addEventListener('mouseup', () => drag = false);
-  }
-  ['ovP1', 'ovShared', 'ovP2'].forEach(id => makeDraggable(S(id)));
 
   // connection
   const override = new URLSearchParams(location.search).get('ws');
@@ -235,10 +213,6 @@
   S('joinP2').onclick = () => pad.join(1, joinUrl()).catch(e => pad.onStatus('join failed: ' + e.message, 'err'));
   S('leave').onclick = () => pad.leave();
   setInterval(() => { const id = pad.padId(); S('pad').textContent = id ? id.slice(0, 26) : 'none (press a button)'; }, 1000);
-
-  // --- panel toggles (P1 / shared / P2) ---
-  ['P1', 'Shared', 'P2'].forEach(t => { S('t' + t).onchange = e => S('ov' + t).classList.toggle('hide', !e.target.checked); });
-  document.querySelectorAll('.ovp .x').forEach(x => x.onclick = () => { const t = x.dataset.t; S('t' + t).checked = false; S('ov' + t).classList.add('hide'); });
 
   // canvas click -> nearest active fighter (by screen anchor)
   cv.addEventListener('click', e => {
