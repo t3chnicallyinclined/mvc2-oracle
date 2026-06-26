@@ -39,6 +39,7 @@ PL[0-9A-Fa-f][0-9A-Fa-f].png
 !web/anim/
 !web/anim/PL[0-9A-Fa-f][0-9A-Fa-f].json
 PL*_parts.*
+PL*_edit.*
 PL*_asm.json
 PL*_idx.png
 PL*_lut.json
@@ -70,3 +71,18 @@ re_kb/ingest/__pycache__/
 .DS_Store
 .vscode/
 *.swp
+
+# --- Oracle bot: secrets / runtime / generated state (NEVER commit) ---
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.token
+*.key
+oracle-bot/discord-bot/oracle_usage.db
+oracle-bot/managed-agent/oracle_ids.json
+
+# --- ROM-derived scratch/work files at repo root (underscore-prefixed; never commit) ---
+/_*.bin
+/_*.json

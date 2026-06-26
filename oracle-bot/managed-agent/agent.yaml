@@ -1,0 +1,19 @@
+# The MvC2 Oracle agent (control plane — create once, version on change):
+#   AGENT_ID=$(ant beta:agents create < agent.yaml --transform id -r)
+#   # later, to update:  ant beta:agents update --agent-id "$AGENT_ID" --version N < agent.yaml
+#
+# `@./system_prompt_cma.md` inlines the persona file (ant resolves @path). The built-in toolset
+# gives the agent grep/read/glob/bash over the mounted repo + memory store — no custom tools.
+name: MvC2 Oracle
+model: claude-opus-4-8
+system: "@./system_prompt_cma.md"
+tools:
+  - type: agent_toolset_20260401
+    default_config:
+      enabled: true
+    # disable the network reach the bot doesn't need (keeps it grounded in mounted sources)
+    configs:
+      - name: web_search
+        enabled: false
+      - name: web_fetch
+        enabled: false
