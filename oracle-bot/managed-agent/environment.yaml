@@ -1,0 +1,11 @@
+# Cloud environment for the MvC2 Oracle.
+# Apply once (control plane), reuse across agents:
+#   ant beta:environments create < environment.yaml
+# Networking: unrestricted is simplest for a first cut. The github_repository mount is cloned via
+# Anthropic's git proxy (not container egress), and grep/read need no network — so this can be
+# tightened to {type: limited} later if you don't add web_search/web_fetch tools.
+name: mvc2-oracle-env
+config:
+  type: cloud
+  networking:
+    type: unrestricted
