@@ -1,0 +1,7 @@
+# Representative Oracle questions for the Headroom A/B (one per line, # = comment).
+# These are tool-heavy (grep + read_disasm), which is where compression should pay off.
+Where is the per-frame body emitter and what fields does it read?
+Trace how sprite_id flows from the character struct to the renderer.
+What writes to the facing/direction byte during a turnaround, and where?
+List the routines that touch the per-object quad list and cite bankNN.asm lines.
+How is the effect-blend mode selected for a projectile?

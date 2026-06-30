@@ -6,6 +6,14 @@ Listens in one channel; on `!oracle <question>` or an @mention, opens a Managed 
 (agent + marvelous2 repo mount + re_kb memory store from ../managed-agent/oracle_ids.json),
 streams the cited answer back. Rate-limited per user + a hard daily $ budget, persisted to SQLite.
 
+The answer lands in a thread that stays open for follow-ups: the original asker can keep asking
+in that thread (up to ORACLE_FOLLOWUP_MAX, default 5), each routed back into the SAME session so
+context carries over. Follow-ups count against the daily $ budget but not the per-user question
+quota. Threads idle past ORACLE_THREAD_TTL_SEC are archived. By default (chat-box mode) any message
+the asker types in the thread continues it — pure acknowledgements ("thanks") are ignored so they
+don't burn a turn. Set ORACLE_MESSAGE_CONTENT=0 to fall back to mention-only (follow-ups then need
+an @mention).
+
 Env:
     DISCORD_BOT_TOKEN     the Oracle bot's token
     ANTHROPIC_API_KEY     funded key (the agent runs on this)
@@ -46,6 +54,10 @@ PER_USER_DAILY = int(os.environ.get("ORACLE_PER_USER_DAILY", "5"))
 COOLDOWN_SEC = int(os.environ.get("ORACLE_COOLDOWN_SEC", "30"))
 DAILY_BUDGET_USD = float(os.environ.get("ORACLE_DAILY_BUDGET_USD", "10"))
 MAX_CONCURRENT = int(os.environ.get("ORACLE_MAX_CONCURRENT", "3"))
+# Conversation: after the first answer the question's thread stays open for follow-ups, each
+# routed back into the SAME managed-agent session (full context carries over). Capped per thread.
+FOLLOWUP_MAX = int(os.environ.get("ORACLE_FOLLOWUP_MAX", "5"))
+THREAD_TTL_SEC = int(os.environ.get("ORACLE_THREAD_TTL_SEC", "3600"))
 EXEMPT_ROLES = {"Team", "Mod", "Dev / Contributor"}
 ADMIN_ROLES = {"Team", "Mod"}
 
@@ -65,6 +77,8 @@ def _db():
         CREATE TABLE IF NOT EXISTS daily(day TEXT PRIMARY KEY, count INTEGER DEFAULT 0,
             cost REAL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS cooldown(user_id TEXT PRIMARY KEY, last_ts REAL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS threads(thread_id INTEGER PRIMARY KEY, session_id TEXT,
+            owner TEXT, turns INTEGER DEFAULT 0, cost REAL DEFAULT 0, ts REAL DEFAULT 0);
     """)
     return c
 
@@ -73,8 +87,10 @@ def _today():
     return dt.datetime.now(dt.timezone.utc).date().isoformat()
 
 
-def gate(user_id: str, exempt: bool):
-    """Return (ok, reason). Enforces cooldown, per-user daily quota, server daily budget."""
+def gate(user_id: str, exempt: bool, followup: bool = False):
+    """Return (ok, reason). Server daily budget always applies. Follow-ups inside an already-open
+    thread (followup=True) skip the per-user daily quota + cooldown — they're bounded by the
+    per-thread FOLLOWUP_MAX cap instead."""
     day = _today()
     c = _db()
     try:
@@ -82,7 +98,7 @@ def gate(user_id: str, exempt: bool):
         if spent and spent[0] >= DAILY_BUDGET_USD:
             return False, (f"The Oracle's daily budget (${DAILY_BUDGET_USD:.0f}) is used up — "
                            "it resets at 00:00 UTC. Back tomorrow.")
-        if exempt:
+        if exempt or followup:
             return True, ""
         last = c.execute("SELECT last_ts FROM cooldown WHERE user_id=?", (user_id,)).fetchone()
         if last and time.time() - last[0] < COOLDOWN_SEC:
@@ -98,15 +114,18 @@ def gate(user_id: str, exempt: bool):
         c.close()
 
 
-def record(user_id: str, cost: float):
+def record(user_id: str, cost: float, count: bool = True):
+    """Charge `cost` to the daily budget. count=True also burns one of the user's daily questions
+    and bumps the question tally; follow-ups pass count=False (cost still counts, quota doesn't)."""
     day = _today()
+    n = 1 if count else 0
     c = _db()
     try:
-        c.execute("INSERT INTO usage(user_id,day,count,cost) VALUES(?,?,1,?) "
-                  "ON CONFLICT(user_id,day) DO UPDATE SET count=count+1, cost=cost+?",
-                  (user_id, day, cost, cost))
-        c.execute("INSERT INTO daily(day,count,cost) VALUES(?,1,?) "
-                  "ON CONFLICT(day) DO UPDATE SET count=count+1, cost=cost+?", (day, cost, cost))
+        c.execute("INSERT INTO usage(user_id,day,count,cost) VALUES(?,?,?,?) "
+                  "ON CONFLICT(user_id,day) DO UPDATE SET count=count+?, cost=cost+?",
+                  (user_id, day, n, cost, n, cost))
+        c.execute("INSERT INTO daily(day,count,cost) VALUES(?,?,?) "
+                  "ON CONFLICT(day) DO UPDATE SET count=count+?, cost=cost+?", (day, n, cost, n, cost))
         c.execute("INSERT INTO cooldown(user_id,last_ts) VALUES(?,?) "
                   "ON CONFLICT(user_id) DO UPDATE SET last_ts=?",
                   (user_id, time.time(), time.time()))
@@ -161,8 +180,9 @@ def _cost(usage) -> float:
             + cw5 * PRICE["cw5"] + cw1h * PRICE["cw1h"]) / 1_000_000
 
 
-def ask_oracle_blocking(ids: dict, gh: str, question: str):
-    """Open a session, ask, return (answer_text, cost_usd). Blocking — call via to_thread."""
+def open_oracle_session(ids: dict, gh: str) -> str:
+    """Create a managed-agent session (repo mounts + memory store) and return its id. Kept alive so
+    the question's Discord thread can carry follow-up turns; archive it when the thread is done."""
     c = anthropic.Anthropic()
     session = c.beta.sessions.create(
         agent={"type": "agent", "id": ids["agent_id"], "version": ids["agent_version"]},
@@ -179,10 +199,18 @@ def ask_oracle_blocking(ids: dict, gh: str, question: str):
                              "answering; cite what you use."},
         ],
     )
+    return session.id
+
+
+def ask_in_session(session_id: str, question: str, prev_cost: float = 0.0):
+    """Send one user turn into an existing session and stream the reply. Returns
+    (answer_text, delta_cost_usd, cumulative_cost_usd). Blocking — call via to_thread.
+    Session usage is cumulative, so we bill the delta over prev_cost."""
+    c = anthropic.Anthropic()
     parts = []
-    with c.beta.sessions.events.stream(session_id=session.id) as stream:
+    with c.beta.sessions.events.stream(session_id=session_id) as stream:
         c.beta.sessions.events.send(
-            session_id=session.id,
+            session_id=session_id,
             events=[{"type": "user.message",
                      "content": [{"type": "text", "text": question + DISCORD_STYLE}]}],
         )
@@ -201,16 +229,20 @@ def ask_oracle_blocking(ids: dict, gh: str, question: str):
                 sr = getattr(event, "stop_reason", None)
                 if sr is None or getattr(sr, "type", None) != "requires_action":
                     break
-    cost = 0.0
+    cum = prev_cost
     try:
-        cost = _cost(getattr(c.beta.sessions.retrieve(session.id), "usage", None))
+        cum = _cost(getattr(c.beta.sessions.retrieve(session_id), "usage", None))
     except Exception:
         pass
+    delta = max(0.0, cum - prev_cost)
+    return ("".join(parts).strip() or "_(no answer)_"), delta, cum
+
+
+def archive_session(session_id: str):
     try:
-        c.beta.sessions.archive(session.id)  # tidy up
+        anthropic.Anthropic().beta.sessions.archive(session_id)
     except Exception:
         pass
-    return ("".join(parts).strip() or "_(no answer)_"), cost
 
 
 def chunk(text: str, limit: int = 1900):
@@ -229,15 +261,155 @@ def chunk(text: str, limit: int = 1900):
 
 # ------------------------------------------------------------------------------- discord
 intents = discord.Intents.default()
-# Message Content is a privileged intent (portal toggle). Default OFF: Discord still delivers the
-# text of messages that @mention the bot, so mention-triggering works with NO portal changes.
-# Set ORACLE_MESSAGE_CONTENT=1 (and flip the toggle in the portal) to also catch `!oracle ...` in
-# non-mention messages. The members intent isn't needed — message.author.roles is available for
-# guild message authors as-is.
-if os.environ.get("ORACLE_MESSAGE_CONTENT") == "1":
+# Message Content is a privileged intent (portal toggle, enabled per the README setup). Default ON
+# so threads act like a chat box — follow-ups (and `!oracle ...`) work WITHOUT an @mention. If the
+# portal toggle isn't granted, discord.py raises PrivilegedIntentsRequired at startup; either enable
+# it in the Developer Portal or set ORACLE_MESSAGE_CONTENT=0 to fall back to mention-only. The
+# members intent isn't needed — message.author.roles is available for guild message authors as-is.
+if os.environ.get("ORACLE_MESSAGE_CONTENT", "1") != "0":
     intents.message_content = True
 client = discord.Client(intents=intents)
 _sem = asyncio.Semaphore(MAX_CONCURRENT)
+
+# Open Oracle threads that accept follow-ups: thread_id -> {session, owner, turns, cost, ts}.
+# Mirrored to the `threads` SQLite table so follow-ups survive a bot restart (see restore_threads).
+_threads: dict[int, dict] = {}
+
+
+def _save_thread(thread_id: int, e: dict):
+    c = _db()
+    try:
+        c.execute("INSERT INTO threads(thread_id,session_id,owner,turns,cost,ts) VALUES(?,?,?,?,?,?) "
+                  "ON CONFLICT(thread_id) DO UPDATE SET session_id=excluded.session_id, "
+                  "owner=excluded.owner, turns=excluded.turns, cost=excluded.cost, ts=excluded.ts",
+                  (thread_id, e["session"], e["owner"], e["turns"], e["cost"], e["ts"]))
+        c.commit()
+    finally:
+        c.close()
+
+
+def _delete_thread(thread_id: int):
+    c = _db()
+    try:
+        c.execute("DELETE FROM threads WHERE thread_id=?", (thread_id,))
+        c.commit()
+    finally:
+        c.close()
+
+
+async def restore_threads():
+    """On startup, reload open threads from SQLite. Any already past the TTL get archived + dropped."""
+    now = time.time()
+    c = _db()
+    try:
+        rows = c.execute("SELECT thread_id,session_id,owner,turns,cost,ts FROM threads").fetchall()
+    finally:
+        c.close()
+    restored = 0
+    for tid, sid, owner, turns, cost, ts in rows:
+        if now - (ts or 0) > THREAD_TTL_SEC:
+            await asyncio.to_thread(archive_session, sid)
+            _delete_thread(tid)
+        else:
+            _threads[int(tid)] = {"session": sid, "owner": owner, "turns": turns,
+                                  "cost": cost, "ts": ts}
+            restored += 1
+    if restored:
+        print(f"restored {restored} open Oracle thread(s) from db", flush=True)
+
+
+def _follow_hint() -> str:
+    if intents.message_content:
+        return f"💬 _Ask follow-ups right here in this thread — up to {FOLLOWUP_MAX} more._"
+    return f"💬 _Follow-ups: @mention me in this thread to keep going — up to {FOLLOWUP_MAX} more._"
+
+
+# Pure acknowledgements that shouldn't spend one of the limited follow-up turns in chat-box mode.
+_ACKS = {"thanks", "thank you", "ty", "tysm", "thx", "thnx", "ok", "okay", "k", "kk", "nice", "cool",
+         "got it", "gotcha", "great", "perfect", "gg", "lol", "lmao", "nvm", "never mind", "np",
+         "yw", "sweet", "awesome", "based", "word", "facts", "fire", "dope", "neat", "huh", "wow"}
+
+
+def _is_chatter(text: str) -> bool:
+    """True for bare acknowledgements / emoji-only — seen but not worth a follow-up turn."""
+    t = re.sub(r"[^\w\s]", "", text).strip().lower()
+    return t == "" or t in _ACKS
+
+
+def thread_followup_text(message) -> str | None:
+    """Pull a follow-up question out of a message inside a tracked Oracle thread. Reads @mention
+    text (always available) or raw text when the message-content intent is enabled."""
+    if client.user in getattr(message, "mentions", []):
+        txt = re.sub(rf"<@!?{client.user.id}>", "", message.content).strip()
+    elif intents.message_content:
+        txt = message.content.strip()
+    else:
+        return None
+    if txt.lower().startswith("!oracle"):
+        txt = txt[len("!oracle"):].strip()
+    return txt or None
+
+
+async def end_thread(thread_id: int):
+    e = _threads.pop(thread_id, None)
+    _delete_thread(thread_id)
+    if e:
+        await asyncio.to_thread(archive_session, e["session"])
+
+
+async def reap_threads():
+    """Archive + forget threads idle past the TTL so server sessions don't dangle."""
+    now = time.time()
+    for tid in [t for t, e in list(_threads.items()) if now - e["ts"] > THREAD_TTL_SEC]:
+        await end_thread(tid)
+
+
+async def handle_followup(message, entry: dict, question: str, exempt: bool):
+    """Continue an open thread's session with one more turn (no new thread, no quota burn)."""
+    if len(question) < 5:
+        return
+    if entry["turns"] >= FOLLOWUP_MAX:
+        await message.reply(f"This thread's hit its {FOLLOWUP_MAX}-follow-up limit — start a fresh "
+                            "question with `!oracle …` or an @mention in the channel.",
+                            mention_author=False)
+        await end_thread(message.channel.id)
+        return
+    ok, reason = gate(str(message.author.id), exempt, followup=True)
+    if not ok:
+        await message.reply(reason, mention_author=False)
+        return
+    placeholder = await message.reply("🔮 consulting the disassembly…", mention_author=False)
+    try:
+        async with _sem:
+            answer, delta, cum = await asyncio.to_thread(
+                ask_in_session, entry["session"], question, entry["cost"])
+        entry["turns"] += 1
+        entry["cost"] = cum
+        entry["ts"] = time.time()
+        _save_thread(message.channel.id, entry)
+        record(str(message.author.id), delta, count=False)
+        pieces = chunk(answer)
+        await placeholder.edit(content=pieces[0])
+        for p in pieces[1:]:
+            await message.channel.send(p)
+        left = FOLLOWUP_MAX - entry["turns"]
+        if left <= 0:
+            await message.channel.send(f"_(Last of {FOLLOWUP_MAX} follow-ups for this thread — "
+                                       "start a new question for more.)_")
+            await end_thread(message.channel.id)
+        else:
+            await message.channel.send(f"_({left} follow-up{'' if left == 1 else 's'} left.)_")
+    except Exception as e:
+        await placeholder.edit(content="⚠️ The Oracle hit an error (the thread may have expired — "
+                                       f"start a new question): `{e}`")
+        await end_thread(message.channel.id)
+
+# Slash commands (/bug, /feature -> GitHub issues). Requires the bot to be invited
+# with the applications.commands scope. See dev_commands.py.
+from discord import app_commands  # noqa: E402
+import dev_commands  # noqa: E402
+tree = app_commands.CommandTree(client)
+dev_commands.setup_dev_commands(tree)
 
 
 def roles_of(member) -> set:
@@ -255,10 +427,23 @@ def parse_trigger(message) -> str | None:
 
 @client.event
 async def on_ready():
-    mode = ("mention + !oracle prefix" if intents.message_content
-            else "mention-only (set ORACLE_MESSAGE_CONTENT=1 + portal toggle for !oracle prefix)")
+    mode = ("chat-box (thread follow-ups need no @mention) + !oracle prefix" if intents.message_content
+            else "mention-only (set ORACLE_MESSAGE_CONTENT=1 + portal toggle for chat-box mode)")
     print(f"Oracle bot online as {client.user} | trigger={mode} | channels={CHANNEL_IDS or 'any'} "
           f"| per-user/day={PER_USER_DAILY} | budget=${DAILY_BUDGET_USD}", flush=True)
+    await restore_threads()
+    # Register slash commands. Guild-scoped sync (DEV_GUILD_ID) is instant; global takes ~1h.
+    try:
+        gid = os.environ.get("DEV_GUILD_ID")
+        if gid:
+            g = discord.Object(id=int(gid))
+            tree.copy_global_to(guild=g)
+            synced = await tree.sync(guild=g)
+        else:
+            synced = await tree.sync()
+        print(f"slash commands synced: {[c.name for c in synced]}", flush=True)
+    except Exception as e:
+        print(f"slash sync failed: {e}", flush=True)
 
 
 @client.event
@@ -269,9 +454,25 @@ async def on_message(message):
         print(f"[recv] ch={message.channel.id} from={message.author} "
               f"mentioned={client.user in getattr(message, 'mentions', [])} "
               f"content={message.content!r}", flush=True)
-    if CHANNEL_IDS and message.channel.id not in CHANNEL_IDS:
+    is_oracle_thread = message.channel.id in _threads
+    if CHANNEL_IDS and not is_oracle_thread and message.channel.id not in CHANNEL_IDS:
         return
     roles = roles_of(message.author)
+
+    # Follow-up inside an open Oracle thread → continue the same session (no new thread / quota).
+    if is_oracle_thread:
+        entry = _threads[message.channel.id]
+        if str(message.author.id) != entry["owner"] and not (roles & EXEMPT_ROLES):
+            return  # only the original asker (or staff) drives the thread
+        follow = thread_followup_text(message)
+        if follow and _is_chatter(follow):
+            try:
+                await message.add_reaction("👍")  # acknowledge without spending a turn
+            except Exception:
+                pass
+        elif follow:
+            await handle_followup(message, entry, follow, bool(roles & EXEMPT_ROLES))
+        return
 
     # admin commands (Mod/Team only)
     low = message.content.strip().lower()
@@ -324,18 +525,31 @@ async def on_message(message):
     else:
         placeholder = await message.reply("🔮 consulting the disassembly…", mention_author=False)
         sink = message.channel
+    sid = None
     try:
         async with _sem:
             ids = json.loads(IDS_FILE.read_text())
             gh = os.environ["GITHUB_TOKEN"]
-            answer, cost = await asyncio.to_thread(ask_oracle_blocking, ids, gh, question)
-        record(str(message.author.id), cost)
+            sid = await asyncio.to_thread(open_oracle_session, ids, gh)
+            answer, delta, cum = await asyncio.to_thread(ask_in_session, sid, question, 0.0)
+        record(str(message.author.id), delta, count=True)
         pieces = chunk(answer)
         await placeholder.edit(content=pieces[0])
         for p in pieces[1:]:
             await sink.send(p)
+        # Keep the session alive for follow-ups only when we answered in a real thread.
+        if target is not None:
+            await reap_threads()
+            _threads[target.id] = {"session": sid, "owner": str(message.author.id),
+                                   "turns": 0, "cost": cum, "ts": time.time()}
+            _save_thread(target.id, _threads[target.id])
+            await sink.send(_follow_hint())
+        else:
+            await asyncio.to_thread(archive_session, sid)
     except Exception as e:
         await placeholder.edit(content=f"⚠️ The Oracle hit an error: `{e}`")
+        if sid:
+            await asyncio.to_thread(archive_session, sid)
 
 
 def main():
@@ -344,7 +558,12 @@ def main():
             sys.exit(f"Set {var} first.")
     if not IDS_FILE.exists():
         sys.exit(f"{IDS_FILE} missing — run ../managed-agent/provision.py first.")
-    client.run(os.environ["DISCORD_BOT_TOKEN"])
+    try:
+        client.run(os.environ["DISCORD_BOT_TOKEN"])
+    except discord.errors.PrivilegedIntentsRequired:
+        sys.exit("Message Content Intent is not enabled for this bot. Either turn it on in the "
+                 "Discord Developer Portal (Bot → Privileged Gateway Intents → Message Content), "
+                 "or run with ORACLE_MESSAGE_CONTENT=0 for mention-only mode.")
 
 
 if __name__ == "__main__":
