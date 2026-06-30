@@ -1,0 +1,3 @@
+# Regenerable A/B outputs from ab-test.ps1
+answers-*.txt
+trace-*.txt
