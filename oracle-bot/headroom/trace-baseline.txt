@@ -1,0 +1,61 @@
+# baseline pass - full stderr (tool traces + per-turn usage)
+
+===== Q1: Where is the per-frame body emitter and what fields does it read? =====
+[90mMvC2 Oracle · claude-opus-4-8 · re_kb+docs context: ~168 KB (cached)[0m
+[90m[in 93 +cache_read 0 / out 1730][0m
+
+
+===== Q2: Trace how sprite_id flows from the character struct to the renderer. =====
+[90mMvC2 Oracle · claude-opus-4-8 · re_kb+docs context: ~168 KB (cached)[0m
+[90m[in 95 +cache_read 84309 / out 389][0m
+[36m→ grep_disasm({"pattern": "loc_8c0344d4|loc_8c0345c4"})[0m
+[36m→ grep_disasm({"pattern": "0x0144"})[0m
+[90m[in 886 +cache_read 84309 / out 318][0m
+[36m→ read_disasm({"file": "build/bank03.asm", "start_line": 10218, "end_line": 10260})[0m
+[36m→ read_disasm({"file": "build/bank03.asm", "start_line": 11567, "end_line": 11620})[0m
+[90m[in 2968 +cache_read 84309 / out 2148][0m
+[36m→ read_disasm({"file": "build/bank03.asm", "start_line": 10330, "end_line": 10360})[0m
+[36m→ read_disasm({"file": "build/bank03.asm", "start_line": 11281, "end_line": 11300})[0m
+[90m[in 6004 +cache_read 84309 / out 187][0m
+[36m→ grep_disasm({"pattern": "loc_8c0345fc:|loc_8c0345fe:|loc_8c034600:"})[0m
+[90m[in 6262 +cache_read 84309 / out 104][0m
+[36m→ read_disasm({"file": "build/bank03.asm", "start_line": 10380, "end_line": 10392})[0m
+[90m[in 6540 +cache_read 84309 / out 2806][0m
+
+
+===== Q3: What writes to the facing/direction byte during a turnaround, and where? =====
+[90mMvC2 Oracle · claude-opus-4-8 · re_kb+docs context: ~168 KB (cached)[0m
+[90m[in 95 +cache_read 84309 / out 247][0m
+[36m→ grep_disasm({"pattern": "loc_8c0d97ee"})[0m
+[36m→ grep_disasm({"pattern": "loc_8c0d9820"})[0m
+[90m[in 437 +cache_read 84309 / out 155][0m
+[36m→ read_disasm({"file": "build/bank0d.asm", "start_line": 23250, "end_line": 23290})[0m
+[90m[in 1297 +cache_read 84309 / out 206][0m
+[36m→ read_disasm({"file": "build/bank0d.asm", "start_line": 23290, "end_line": 23320})[0m
+[90m[in 1964 +cache_read 84309 / out 3029][0m
+[36m→ read_disasm({"file": "build/bank0d.asm", "start_line": 23230, "end_line": 23254})[0m
+[36m→ grep_disasm({"pattern": "mov\\.(b|w) r[0-9]+,@\\(0x110,"})[0m
+[90m[in 5450 +cache_read 84309 / out 739][0m
+[36m→ grep_disasm({"pattern": "mov\\.(b|w) r[0-9]+,@\\(r0,r14\\)"})[0m
+[36m→ read_disasm({"file": "build/bank0d.asm", "start_line": 23320, "end_line": 23360})[0m
+[90m[in 9314 +cache_read 84309 / out 2987][0m
+[36m→ grep_disasm({"pattern": "@\\(r0,r14\\)", "ignore_case": false})[0m
+[90m[in 14685 +cache_read 84309 / out 4604][0m
+
+
+===== Q4: List the routines that touch the per-object quad list and cite bankNN.asm lines. =====
+[90mMvC2 Oracle · claude-opus-4-8 · re_kb+docs context: ~168 KB (cached)[0m
+[90m[in 100 +cache_read 84309 / out 608][0m
+[36m→ grep_disasm({"pattern": "^loc_8c0308c2:|^loc_8c03093c:|^loc_8c0344d4:|^loc_8c033e90:|^loc_8c034864:"})[0m
+[36m→ grep_disasm({"pattern": "^loc_8c1244b0:|^loc_8c1248cc:|^loc_8c1294c8:|^loc_8c129cc2:|^loc_8c1216c0:|^loc_8c1240a0:", "ignore_case": true})[0m
+[90m[in 994 +cache_read 84309 / out 193][0m
+[36m→ grep_disasm({"pattern": "8c1248cc", "ignore_case": true})[0m
+[90m[in 1197 +cache_read 84309 / out 1504][0m
+
+
+===== Q5: How is the effect-blend mode selected for a projectile? =====
+[90mMvC2 Oracle · claude-opus-4-8 · re_kb+docs context: ~168 KB (cached)[0m
+[90m[in 91 +cache_read 84309 / out 618][0m
+[36m→ read_disasm({"file": "build/bank03.asm", "start_line": 191, "end_line": 230})[0m
+[90m[in 1343 +cache_read 84309 / out 1544][0m
+

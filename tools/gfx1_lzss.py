@@ -48,8 +48,13 @@ def encodeA(data):
             bc = 0x80 >> bit
             best_len = 0; best_start = 0
             # candidate lookback distances: (dist+1) in 1..16  ->  start = i-(dist+1)
+            # Iterate LARGEST distance first (start=lo upward) and keep the longest match,
+            # so among equal-length matches we pick the FARTHEST. The real decoder
+            # (loc_8c0354c0) mishandles repeated dist=0 RLE runs that a "nearest match"
+            # greedy emits — the ROM only uses dist=0 to bootstrap, then dist=15. Matching
+            # that strategy keeps our stream in the token distribution the ROM produces.
             lo = max(0, i - 16)
-            for start in range(i - 1, lo - 1, -1):
+            for start in range(lo, i):
                 period = i - start                  # = dist+1, in 1..16
                 l = 0
                 while l < 17 and i + l < n and data[i + l] == data[start + (l % period)]:

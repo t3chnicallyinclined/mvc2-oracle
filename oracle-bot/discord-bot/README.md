@@ -28,6 +28,10 @@ loop + container + memory, but the Discord gateway listener is yours.
 ## Usage (members)
 - `!oracle <question>` or `@MvC2 Oracle <question>` in the configured channel.
 - A "🔮 consulting…" message is replaced with the cited answer (split across messages if long).
+- The answer opens a **thread** that stays a live conversation: the asker can keep asking there
+  (up to `ORACLE_FOLLOWUP_MAX`, default 5) and each turn carries full context. In the default
+  chat-box mode no @mention is needed in the thread; bare "thanks"-type messages get a 👍 and don't
+  spend a turn. Follow-ups count against the daily $ budget but not the per-user question quota.
 
 ## Limits & management
 All env-tunable (defaults shown):
@@ -39,6 +43,9 @@ All env-tunable (defaults shown):
 | **server daily budget** | `ORACLE_DAILY_BUDGET_USD` | 10 | hard $/day cap across everyone — the cost backstop |
 | max concurrent | `ORACLE_MAX_CONCURRENT` | 3 | simultaneous sessions |
 | channel lock | `ORACLE_CHANNEL_ID` | any | only respond in this channel |
+| follow-ups/thread | `ORACLE_FOLLOWUP_MAX` | 5 | max follow-up turns per question thread |
+| thread idle TTL | `ORACLE_THREAD_TTL_SEC` | 3600 | idle seconds before a thread's session is archived |
+| chat-box mode | `ORACLE_MESSAGE_CONTENT` | 1 (on) | `0` = mention-only (follow-ups then need an @mention) |
 
 - **Exempt roles** (bypass quota/cooldown): `Team`, `Mod`, `Dev / Contributor`.
 - Usage is persisted in `oracle_usage.db` (SQLite) — survives restarts; resets logically at UTC midnight.
@@ -60,7 +67,11 @@ misbehaves. Belt and suspenders.
 At a $10/day budget that's roughly 30–70 questions/day before the bot pauses till reset.
 
 ## Notes / next
-- Each question is an independent session (no cross-question memory). For threaded follow-ups,
-  key a session per Discord thread — a later enhancement.
+- Each question opens its own session, kept alive for that thread's follow-ups (keyed per Discord
+  thread, persisted in `oracle_usage.db` so it survives a restart). Distinct questions don't share
+  memory; a thread's follow-ups do.
+- Chat-box mode needs the **Message Content Intent** (portal toggle, step 2 above) — it's on by
+  default. Without the toggle the bot exits at startup with a clear message; set
+  `ORACLE_MESSAGE_CONTENT=0` for mention-only mode if you don't want the intent.
 - Memory is mounted **read-only** (public input can't poison the graph). Curated writes happen via
   the trusted `../managed-agent/run_session.py --curate` path.

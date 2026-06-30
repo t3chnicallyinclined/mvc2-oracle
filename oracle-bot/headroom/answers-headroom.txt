@@ -1,0 +1,241 @@
+# headroom pass
+
+===== Q1: Where is the per-frame body emitter and what fields does it read? =====
+## The per-frame body emitter: `loc_8c0344d4` (bank03)
+
+The live per-frame body geometry/screen-quad emitter is **`loc_8c0344d4`** — PC `0x8C0344D4`, `build/bank03.asm:10218`. **[CONFIRMED]** (`re_kb` `routine:loc_8c0344d4`, cite `source:marv_bank03`)
+
+It's the routine that places the character body on screen every frame: it reads the current `sprite_id`, walks that cell's 8-byte GFX2 records with a cumulative running "pen," and submits each tile's screen-quad to the bank12 PVR submit (`loc_8c1244b0`). It calls **no decoder** — it consumes already-decoded VRAM pixels. (Don't confuse it with `loc_8c033e90`, the *load-time* effect/UI sheet packer, or `loc_8c03093c`, which computes the screen anchor.)
+
+Let me confirm the exact read sites in the disassembly.
+This confirms it. Here's the spec.
+
+## What `loc_8c0344d4` reads (per node `r14` = char/object struct)
+
+| What it reads | Offset | Disasm line | Purpose |
+|---|---|---|---|
+| **Dat_GFX2** (cell table base) | `+0x160` | :10235 (`mov.l @(r0,r14),r4`), :10241 | `cell = GFX2 + *(u32)(GFX2 + (sid & 0x7FFF)*4)`; first u16 = record count (:10244) |
+| **sprite_id** (masked `&0x7FFF`) | `+0x144` | :10236–10240 | the cell index / render key |
+| **facing** | `+0x110` | :10272–10275 (`tst r1,r1; bf`) | gates the pen-X negate (`neg r10` @:10283) and texture-U mirror (`neg r8` @:10313) |
+| **screen_x / screen_y** anchor | `+0xE0 / +0xE4` | :10300–10312 (the `fmac` adds pen·scale to the anchor) | final screen = anchor + (pen+tile)·scale |
+| **hitbox/render scale X/Y** | `+0xEC / +0xF0` | :10286–10298 (`fmac fr0,fr3,fr2`) | the per-axis scale multiplied into the pen |
+| **Dat_GFX1** (part header table) | `+0x15C` | :10352 (`mov.l @(r0,r14),r4`) | `hdr = GFX1 + *(u32)(GFX1 + sel*4)`; reads tile dims |
+| per-record **sel** | `r11+0x6` | :10353 (`mov.w @(0x6,r11),r0`) | GFX1 part selector for each 8-byte cell record |
+
+All **[CONFIRMED]** — `build/bank03.asm:10218–10370`, reconciled with `re_kb` `routine:loc_8c0344d4` and `field:facing` / `field:screen_x` / `field:sprite_id` / `field:dat_gfx2`.
+
+## How it works (the model)
+- Walks the GFX2 cell's 8-byte records `[dx s16][dy s16][FLAGS u16][sel u16]` with a **cumulative running pen**: X accumulates ±dx (negated on facing, `neg r10`), Y accumulates −=dy. **[CONFIRMED]** (`finding:cumulative_pen_geometry`, `re_kb`)
+- **Flips:** FLAGS `0x4000` = X-mirror, `0x8000` = Y-mirror; the same `facing` byte at `+0x110` drives **both** the position reflection (`neg r10` @:10283/10306) and the texture-U mirror (`neg r8` @:10313) — they stay in lockstep. **[CONFIRMED]** (`finding:emitter_facing_rule`, `finding:flip_bits`)
+- One cell can expand into **N tiles** (inner tile loop), each a separate PVR quad submitted via `loc_8c1244b0` — it calls **no decoder**, consuming pre-decoded VRAM. **[CONFIRMED]** (`finding:body_walker_tiling`)
+
+**Don't confuse with:** `loc_8c03093c` writes the `+0xE0/+0xE4` screen anchor (world→screen transform) that this emitter then reads; `loc_8c033e90` is the load-time effect/UI packer (sels 0–251), not per-frame. **[CONFIRMED]** (`re_kb` `routine:loc_8c03093c`, `routine:loc_8c033e90`)
+
+
+===== Q2: Trace how sprite_id flows from the character struct to the renderer. =====
+I'll trace this end-to-end and verify the key read/write sites in the disassembly before citing them.
+Let me read the write site (anim tick) and the read site (body emitter).
+Let me confirm the literal-pool constants (the offset and mask) used at the top of the body emitter.
+Confirmed. Here's the full path, write-site → struct → renderer, every hop cited.
+
+## sprite_id flow: cell → char_struct(+0x144) → body emitter → PVR
+
+### 1. WHERE IT'S SET — anim tick `loc_8c034dee` (bank03:11567) **[CONFIRMED]**
+`sprite_id` is not authored by the renderer; it's copied out of the current **20-byte animation cell** each keyframe. The tick decrements the Duration countdown at `+0x142` (`loc_8c034e70 = 0x142`, bank03:11568-11573); when it underflows it advances `current_cell_data` (`+0x154`) by `0x14` (bank03:11580-11583) and copies the new 20 bytes to `player+0x140`. Because the copy lands cell byte N at `player+0x140+N`, the cell **Sprite** field at cell+0x04 lands at **`player+0x144` = sprite_id**.
+- cell layout / copy: `dataformat:anim_cell` (re_kb) and `docs/MVC2-FRAMEDATA-FIELDS.md §3` — "Sprite @0x04 (u16) → copied to player+0x144 = sprite_id … the atlas key the renderer consumes" **[CONFIRMED]**
+- Move/group switches come from the per-character SPL programs via `loc_8c034e8c` (load animation), which recomputes `current_cell_data` from `animations` (`+0x168`) **[CONFIRMED, re_kb routine:loc_8c034e8c]**
+
+### 2. THE FIELD — `char_struct +0x144`, u16
+`sprite_id`, stable per-char body render key, masked `&0x7FFF`. P1C1 absolute = `0x8C268340 + 0x144`. (`pl_mem.asm` sprite_id; `field:sprite_id` re_kb) **[CONFIRMED]**
+
+### 3. WHERE IT'S READ — body emitter `loc_8c0344d4` (bank03:10218) **[CONFIRMED]**
+This is the live per-frame body geometry/quad emitter. I read the entry block and its literal pool (bank03:10380-10407):
+
+```
+10232  mov.w @(loc_8c0345fc,PC),r0   ; loc_8c0345fc = 0x0160  -> Dat_GFX2 offset
+10235  mov.l @(r0,r14),r4            ; r4 = *(node+0x160) = GFX2 base
+10236  add  0xE4,r0                  ; 0x160 + (signed)0xE4(-0x1C) = 0x144  (sprite_id!)
+10237  mov.l @(r0,r14),r0            ; r0 = *(node+0x144) = sprite_id
+10239  and  r3,r0                    ; loc_8c0345fe = 0x7FFF  -> sid & 0x7FFF
+10240  shll2 r0                      ; sid*4
+10241  mov.l @(r0,r4),r11            ; r11 = *(GFX2 + sid*4)
+10243  add  r4,r11                   ; r11 = GFX2 + *(GFX2 + sid*4) = cell pointer
+10244  mov.w @r11+,r2               ; first u16 = record count
+```
+
+So the renderer's entire body geometry is addressed by sprite_id:
+**cell = GFX2 + \*(u32)(GFX2 + (sprite_id & 0x7FFF)·4); first u16 = record count.** (`finding:sel_coverage`, `dataformat:gfx2_cell`) **[CONFIRMED]**
+
+### 4. THE RECORD WALK → GFX1 part → PVR submit **[CONFIRMED]**
+The cell is followed by `count` × 8-byte records `[dx s16][dy s16][FLAGS u16][sel u16]`. At `loc_8c0345c4` (bank03:10349) each record's part selector is read and resolved against GFX1:
+```
+10350  ...                          ; loc_8c034614 = 0x015c -> Dat_GFX1
+10352  mov.l @(r0,r14),r4           ; r4 = *(node+0x15C) = GFX1 base
+10353  mov.w @(0x6,r11),r0          ; sel = u16 @ record+6
+10355  shll2 r0
+10356  mov.l @(r0,r4),r3            ; hdr = GFX1 + *(GFX1 + sel*4)
+```
+A cumulative pen (X ±dx by facing, Y −=dy), the screen anchor `+0xE0/+0xE4`, and scale `+0xEC/+0xF0` place each tile, then it's submitted as a PVR sprite-para via bank12 `loc_8c1244b0`. (`finding:cumulative_pen_geometry`, `finding:body_walker_tiling`) **[CONFIRMED]**
+
+Note: one tiled cell expands to N quads all sharing that cell's sel — pairing is per-emitted-quad, not 1:1 per cell (`finding:tiling_sel_pairing_fix`) **[CONFIRMED]**.
+
+### Two things the renderer does NOT get from sprite_id
+- **Screen position** is computed separately: `loc_8c03093c` runs the world→screen transform and writes `screen_x/y` at `+0xE0/+0xE4` — the body emitter just *reads* that anchor. **[CONFIRMED, re_kb routine:loc_8c03093c]**
+- **Whole-object gate:** the caller side (`loc_8c033b0a`, bank03:8736) does `cmp/eq 0xFF,r0` on `char+0x144`; if `sprite_id == 0xFF` the entire object is skipped (not drawn). This is an object-level gate, distinct from the per-record sel (`finding:sel_00ff_body_walker_not_sentinel`) **[CONFIRMED]**.
+
+## One-line summary
+**anim cell Sprite@+0x04 → (loc_8c034dee copy) → `sprite_id` @ char+0x144 → (loc_8c0344d4: `&0x7FFF`, index GFX2@+0x160) → cell record list → per-record sel into GFX1@+0x15C → PVR submit (loc_8c1244b0).** The field's *meaning* (the renderer's cell key) is fixed at the write-site `loc_8c034dee`, where it's loaded from the animation cell; the read-site `loc_8c0344d4` only consumes it as a GFX2 table index.
+
+
+===== Q3: What writes to the facing/direction byte during a turnaround, and where? =====
+The facing byte's setter is already documented in the knowledge graph, but let me confirm it against the actual disassembly before answering.
+Let me check the literal pool to confirm which offsets these PC-relative loads resolve to, and read the surrounding routine context.
+The instruction at `loc_8C0D9820` reads facing and compares — it doesn't obviously store it. Let me resolve the literal-pool offsets and find the actual store sites for the facing byte.
+The PC-literal at `loc_8c0d9934` is `#data 0x0130` — so this routine actually reads/compares the facing **copy at +0x130**, not +0x110, and it's a turnaround *state machine* (it sets a sub-state byte at +0x6 and kicks off the turn). I need to find where the facing byte itself is actually stored. Let me hunt the real write sites.
+This is an important reconciliation. The seed `re_kb` text claimed this routine "writes r4 → @(0x110,r14)", but the disassembly shows `loc_8C0D9820` actually does `mov.w @(0x110,PC),r0` which loads the **literal `0x0130`** (from `loc_8c0d9934: #data 0x0130`) and then **reads/compares** `@(0x130,r14)` — it's the turnaround *detector/state-machine*, not the byte's writer. Let me find the actual store site, especially the authoritative `xflip @+0x1D2`.
+`bank0d` (the turnaround state machine) contains **no** write to the authoritative `xflip @+0x1D2` — so the turn-detector there only reads the copy at +0x130. The clustered literal pool in bank04 (0x01d2 at :10250 alongside 0x0130 at :10252) looks like a routine that propagates the facing byte. Let me read it.
+Let me read the entry of this turnaround routine to see if the facing write happens before the compare, and confirm what the routine's prologue does.
+I have enough to give you a properly grounded — and partly **corrective** — answer.
+
+## Short answer
+
+In the `marvelous2` disassembly, the routine the `re_kb` graph labels the "facing setter" — **`loc_8C0D97EE`** (`bank0d.asm:23247`) — is the **turnaround controller**, and on careful reading it does **not write the facing byte at all**. It *reads* the facing copy at **+0x130**, decides whether a turn is needed, and kicks off the turn animation. I could not pin a store instruction to the authoritative facing byte inside this routine or anywhere in bank0d. So the honest answer to "what writes it, and where" is: **the turn *trigger* is `loc_8C0D97EE`; the actual facing-byte store is not in that routine, and I don't yet have a confirmed store-site for it.**
+
+## What the code actually does (CONFIRMED — `bank0d.asm:23247–23298`)
+
+`loc_8C0D97EE` (dispatched from a bank15 move-state jump table — `bank15.asm:22660`):
+
+1. **Direction decision (the polarity):** `bank0d.asm:23266–23272`
+   ```
+   mov 0x34,r0
+   fmov @(r0,r13),fr3   ; opponent.pos_x  (+0x34)
+   fmov @(r0,r14),fr2   ; self.pos_x      (+0x34)
+   fcmp/gt fr2,fr3      ; self < opponent → opponent is to the RIGHT
+   bf.s  loc_8c0d9820   ; (delay slot r4=0 → face left)
+   mov   0x01,r4        ; else r4=1 → face right
+   ```
+   So `r4` = desired facing (1 = opponent-right/face-right, 0 = face-left). This polarity matches the cross-check at `loc_8c08ca48` (projectile spawn, xflip → ±X). **CONFIRMED.**
+
+2. **Read + compare the current facing:** `bank0d.asm:23274–23279`
+   ```
+   loc_8C0D9820:
+     mov.w @(0x110,PC),r0   ; ← loads the LITERAL 0x0130 (see pool below)
+     extu.b r4,r4
+     mov.w @(r0,r14),r2      ; reads facing copy @ +0x130
+     cmp/eq r2,r4
+     bt loc_8c0d9850         ; already facing correctly → no turn
+   ```
+   The PC literal it loads is at `bank0d.asm:23435–23436`:
+   ```
+   loc_8c0d9934:  #data 0x0130
+   ```
+   So the offset is **+0x130**, and this is a **read/compare**, not a store.
+
+3. **Turn trigger (facing wrong):** falls through to `bank0d.asm:23280–23298`, which backs up the move-state bytes (+0x6/+0x7 → +0xD2/+0xD3), writes a new **move-state byte +0x6 = 0x0B**, and dispatches the turn animation (the routine calls `bank03.loc_8c034e8c`/`loc_8c034dee` — load-animation / anim-tick, per the literal pool at `:23446–23448`). No facing byte is written.
+
+## Reconciliation — a correction to the `re_kb` seed (flagged loudly)
+
+The seed `09_facing_subgraph.surql` states this routine *"writes r4 → @(0x110,r14)"* at `loc_8C0D9820`. **The disassembly contradicts that on two points** (and the disasm outranks the graph on what the code does):
+
+- The PC-relative load `mov.w @(0x110,PC),r0` resolves to the **literal value `0x0130`**, not offset `0x110`. The `0x110` is the instruction's *PC displacement*, which the seed mis-read as the field offset.
+- It is a **read/compare of +0x130**, not a write of +0x110.
+
+What survives from the seed is only the **polarity derivation** (the `fcmp/gt` of opponent vs self `pos_x@+0x34`). The "set-site writes +0x110" claim should be treated as **OPEN/incorrect** until a real store is found. (Also note `bank0d` contains **no `#data 0x01d2`** at all — so the turnaround code in bank0d never writes the authoritative `xflip @+0x1D2`.) **CONFIRMED via grep.**
+
+## Field layout context (CONFIRMED — docs/pl_mem)
+
+- `+0x1D2` `xflip` = **authoritative** facing/x-mirror (`MVC2-MEMORY-MAP.md:141`).
+- `+0x130` `xflip_copy`, `+0x110` `xflip_copy_2`, `+0x134/+0x136` = copies. The renderer reads the copies (`MARVELOUS2-GFX-NOTES.md:84` reads `+0x130`; `loc_8c03093c` copies `+0x130→+0x134`, `PER-OBJECT-QUAD-SPEC.md:45`).
+
+## What I don't have a source for / how to confirm it
+
+I have **not** located the instruction that actually stores the new value into `xflip @+0x1D2` (or propagates it to `+0x130/+0x110`). There are 80+ `#data 0x01d2` literal sites across banks 04–1b (mostly *reads*); the writer is most likely in the movement/turn-completion path (the bank15-dispatched move-state handlers this routine feeds into), not in `loc_8C0D97EE`.
+
+To confirm the real write-site you'd want either:
+- a targeted disasm pass for a `mov.b rN,@(r0,r14)` store where `r0 = 0x1d2` (the authoritative byte) reachable from the turn animation's completion state, or
+- a runtime capture: `./scripts/capture.sh "$MVC2_ROM" asmtrace` with a watch on `slot.base+0x1D2`, single-stepping through a turnaround — the `[PTRDUMP] FACING` hook described in `GSTA-MAPPING-HANDOFF.md:64` was built for exactly this (does `fac@0x110` ever differ from `xflip@0x1D2` across a turn?).
+
+If you want, I can keep tracing the bank15 move-state jump-table targets that `loc_8C0D97EE` triggers to find the actual `+0x1D2` store.
+
+
+===== Q4: List the routines that touch the per-object quad list and cite bankNN.asm lines. =====
+I'll verify the line numbers for the render/quad-emit routines in the disassembly rather than rely on the seed text alone.
+Here are the routines that touch the per-object render-quad pipeline, line numbers verified against the disassembly. I've grouped them by role and flagged where a routine is the actual quad emitter vs. a feeder/dispatcher.
+
+## The per-frame quad path (the live draw list)
+
+| Routine | bankNN.asm:line | Role | Tag |
+|---|---|---|---|
+| `loc_8c0308c2` | `bank03.asm:1200` | **Slot-table walker** — loops the on-screen slot table (count `0x8C2895E0` / ptr `0x8C287DE0`, stride 0x180) and dispatches each object to Render Main Sprite | CONFIRMED |
+| `loc_8c03093c` | `bank03.asm:1281` | **Render Main Sprite** — per-object, per-frame; runs world→screen and **writes the GPU anchor** `screen_x/y` @+0xE0/+0xE4. Sets up the record; does not emit quads itself | CONFIRMED |
+| `loc_8c0344d4` | `bank03.asm:10218` | **Body geometry/quad emitter** — outer GFX2 cell-record loop; the live per-frame body placement that drives quad submission | CONFIRMED |
+| `loc_8c0345c4` | `bank03.asm:10349` | Per-record setup inside the emitter (reads sel `@(0x6,r11)`, GFX1 header lookup) | CONFIRMED |
+| `loc_8c03478e` | `bank03.asm:10616` | **Inner tile loop** — one emitted screen quad per iteration | CONFIRMED |
+| `loc_8c034864` | `bank03.asm:10739` | **Per-part PVR submit call site** (`jsr @r3` → bank12 submit); the CHARQ/BODYCAP hook PC | CONFIRMED |
+| `loc_8c1216c0` | `bank12.asm:3122` | **World→screen transform** invoked by `loc_8c03093c`; output → node+0xE0/+0xE4 | CONFIRMED |
+| `loc_8c1244b0` | `bank12.asm:9794` | **PVR sprite-para submit** — builds the dest quad (4 screen corners + UV sub-rects); the per-part quad lands here | CONFIRMED |
+
+## The cell-processor dispatch (crash-sensitive quad/vertex path)
+
+| Routine | bankNN.asm:line | Role | Tag |
+|---|---|---|---|
+| `loc_8c1294c8` | `bank12.asm:21885` | **Cell-processor dispatcher** — Duff-device block copy that jumps through the 18-entry table; reads `current_cell_data` @+0x154 (the canonical crash site if stale) | CONFIRMED |
+| `loc_8c12951c` | `bank12.asm:21969` | The **18-entry jump table** indexed by the dispatcher | CONFIRMED |
+| `loc_8c129cc2` | `bank12.asm:23195` | **Per-record quad/vertex loop** — skips 0x18 header, record stride 0x20 | CONFIRMED |
+
+## Load-time (NOT per-frame — don't confuse with the live quad list)
+
+| Routine | bankNN.asm:line | Role | Tag |
+|---|---|---|---|
+| `loc_8c033d78` | `bank03.asm:9092` | Load-time body-sheet decoder driver (once per char at match load) | CONFIRMED |
+| `loc_8c033e90` | `bank03.asm:9258` | **GFX1 load-burst packer** — builds the effect/UI quad list (sels 0–251) into RAM at load time, not the per-frame TA path | CONFIRMED |
+
+### Notes
+- **The actual per-frame quad list is produced by `loc_8c0344d4` → `loc_8c1244b0`**: the body walker iterates GFX2 cell records (and N tiles per record), and each tile is submitted as one PVR sprite-para quad. (`re_kb` `finding:body_walker_tiling`, `finding:tiling_sel_pairing_fix` — CONFIRMED)
+- `loc_8c03093c` and `loc_8c1216c0` are *feeders* — they resolve the screen anchor every object's quads hang off, but emit no quads.
+- I did **not** find a standalone label `loc_8c1248cc` (it's a probe PC *inside* `loc_8c1244b0` at `0x8C1248CC`, used by CHARQ to read the assembled quad corners; `re_kb` `source:oracle_charq`) — so it's an address within `loc_8c1244b0`, not a separate routine. **CONFIRMED** (no label match in `bank12.asm`).
+
+If by "per-object quad list" you mean specifically the satellite **object pool** (capes/projectiles/effects) rather than the body, those objects flow through the **same** `loc_8c0308c2` → `loc_8c03093c` → submit chain (they're enumerated in the same slot table); the per-category render-path selector is `loc_8c0301f6` (`bank03:191-226`) per `re_kb` `finding:objs_effect_blend_gap`. Say the word and I'll pull those exact lines too.
+
+
+===== Q5: How is the effect-blend mode selected for a projectile? =====
+## Short answer
+
+There is **no per-projectile "blend mode" field** the engine reads. Blend is selected two different ways depending on which level you look at:
+
+1. **In the real engine**, the PVR source/destination blend factors come from the **TSP word** of the cell being submitted, decoded deep inside the bank12 PVR-submit path — not from anything stored on the pool object.
+2. **The off-SH4 OBJS render path** can't run that submit math, so it derives blend faithfully from **render category** (which the per-category dispatcher `loc_8c0301f6` already branches on) plus the **"is this an effect" GFX-pointer test**.
+
+Let me give the evidence and then verify the category dispatcher in the disassembly.
+This confirms the re_kb finding. The dispatcher `loc_8c0301f6` (bank03:129) reads a per-object byte and branches on category constants — and you can see the exact `cmp/eq` ladder at bank03:212–224: `0x05`, `0x06`, `0x0B`, `0x0D` (body/cape group) vs `0x07`, `0x08`, `0x09` (projectile/effect group). **CONFIRMED** (bank03:129–224).
+
+## How blend is actually selected
+
+### In the engine: from the cell's TSP word, inside the bank12 PVR submit
+The PVR source/destination blend factors are extracted from the **TSP (Texture/Shading Parameter) word** of the cell record at the moment it's submitted to the hardware:
+- `src = (tsp >> 29) & 7`, `dst = (tsp >> 26) & 7`
+- CHARQ-captured at `recBase + 0x14`
+
+This selection happens **deep in the bank12 PVR-submit path** (`loc_8c1244b0` family), not on the projectile object itself. **CONFIRMED** — `re_kb` finding `objs_effect_blend_gap`, cited to the bank12 submit and the CHARQ capture.
+
+### There is no per-object blend byte
+A projectile lives in the satellite object pool (`object_pool_node`, base `0x8C26AA54`, stride `0x1D0`). Its readable fields — `category@+0x03`, `xflip@+0x130`, `GFX@+0x15C`, `extras@+0x178` — **do not contain a blend/list-type byte**. So you cannot read "the blend mode" off the projectile node directly. **CONFIRMED** — `re_kb` `objs_effect_blend_gap` ("NO per-object blend byte in pool node … option-a fails").
+
+### Off-SH4 (the OBJS render path): derived faithfully from category + is-effect
+Because the lean RAM-walk OBJS path never runs the bank12 submit, the chosen reconstruction (`computeObjectBlend`) derives blend from two RAM-readable signals:
+
+| Signal | Source | Result |
+|---|---|---|
+| GFX pointer in the Effect Poly bank `0x0CED0000` (`is_effect`) | `obj_owner`/GFX `+0x15C` | **2 = additive** |
+| Category ∈ {body/cape: 0x05,0x06,0x0B,0x0C,0x0D,0x01} | dispatcher `loc_8c0301f6` (bank03:191–226) | **0 = opaque** |
+| anything else (projectile/effect categories 0x07/0x08/0x09) | same dispatcher | **1 = alpha** |
+
+Draw ordering comes from the master back-to-front category order in `loc_8c0305d8` (bank03:733). **CONFIRMED** — `re_kb` `objs_effect_blend_gap` (status `resolved`), cited to `loc_8c0301f6` and `loc_8c0305d8`.
+
+So for a projectile specifically: if its GFX pointer resolves into the shared Effect Poly bank it renders **additive**; otherwise a projectile/effect category (0x07/0x08/0x09) renders **alpha-blended**.
+
+## Caveats
+- The category→blend mapping above is the **faithful, RAM-derivable approximation** the off-SH4 renderer uses. The **true** per-draw blend is whatever the cell's TSP word encodes (`>>29`/`>>26`); for an unusual projectile whose TSP differs from its category default, the approximation could disagree. To confirm a specific projectile's real factors you'd capture the TSP at the bank12 submit (`recBase+0x14`) via `./scripts/capture.sh "$MVC2_ROM" asmtrace`. **INFERRED** caveat (the gap between option-b "true source" and option-c "chosen" is stated explicitly in the finding).
+
+If you want, I can read the exact TSP-word extraction in the bank12 submit to pin the `>>29`/`>>26` shift instructions to a line.
+
