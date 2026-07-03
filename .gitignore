@@ -86,3 +86,5 @@ oracle-bot/managed-agent/oracle_ids.json
 # --- ROM-derived scratch/work files at repo root (underscore-prefixed; never commit) ---
 /_*.bin
 /_*.json
+oracle-bot/discord-bot/roles_msg.json
+roles.env
