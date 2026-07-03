@@ -1,0 +1,18 @@
+[Unit]
+Description=NOBD console-role dropdown bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nobd-oracle/oracle-bot/discord-bot
+# Uses the NOBD (admin) bot token — secrets live here on the VPS only (chmod 600), NEVER in git.
+EnvironmentFile=/opt/nobd-oracle/oracle-bot/discord-bot/roles.env
+ExecStart=/opt/nobd-oracle/venv/bin/python /opt/nobd-oracle/oracle-bot/discord-bot/roles_bot.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
