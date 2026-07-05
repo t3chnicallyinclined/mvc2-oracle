@@ -4,8 +4,10 @@
 #   - nobd-roles  : the console-role dropdown bot (roles_bot.py)
 # Run from your machine — it needs WORKING SSH to the host (your interactive key).
 #
-#   bash oracle-bot/deploy/deploy.sh [user@host]      # default: user@your.server.example
+#   bash oracle-bot/deploy/deploy.sh [user@host]      # default: user@your.server.example (nobd.net prod)
 #
+# NOTE: needs rsync, which the Windows dev box lacks — see deploy/README.md for the tar+scp path.
+# The old your.server.example host was decommissioned 2026-04-15; current prod is your.server.example.
 # First run: copies a .env template per service to the VPS and stops — fill the secrets there, then
 # `systemctl enable --now <service>`. Subsequent runs: sync code + restart both services.
 set -euo pipefail
