@@ -49,6 +49,31 @@ honesty/curation discipline below — verify before you broadcast.**
 Each bot has its own token (env `DISCORD_BOT_TOKEN`). Use the **setup bot** for admin/announce, the
 **Oracle bot** for the Q&A listener.
 
+## Deployment (production) — both bots are LIVE on the nobd.net VPS
+As of **2026-07-05** both bots run 24/7 as **systemd services** on the production VPS, not from anyone's
+terminal. This is the source of truth — verify with the healthcheck rather than assuming.
+- **Host:** `root@149.28.44.118` (nobd.net; interactive root SSH key is authorized). **The old
+  `66.55.128.93` was DECOMMISSIONED 2026-04-15** — `deploy.sh`'s historical default pointed there; ignore it.
+- **Co-tenant:** the box also runs the **maplecast** stack (flycast/relay/hub/SurrealDB). The bots are
+  fully isolated under **`/opt/nobd-oracle/`** — never touch the maplecast units/paths, and vice-versa.
+- **Services:** `nobd-oracle.service` (Q&A bot, `bot.py`) and `nobd-roles.service` (console-role dropdown
+  bot, `roles_bot.py`). Both `enabled` + `Restart=always`; one shared venv at `/opt/nobd-oracle/venv`.
+- **Secrets on-box only** (chmod 600, never git): `…/discord-bot/.env` (Oracle: `DISCORD_BOT_TOKEN` =
+  MVC2-Oracle app, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`) and `…/discord-bot/roles.env` (NOBD admin token +
+  `DISCORD_GUILD_ID` + `ROLES_CHANNEL_ID`).
+- **Deploy method:** the Windows dev box has **no rsync**, so `deploy.sh` (rsync-based) won't run there.
+  Deploy by hand: `tar` the `oracle-bot/` dir (exclude `.env`/`roles.env`/`__pycache__`/`*_usage.db`/
+  `roles_msg.json`) → `scp` → extract to `/opt/nobd-oracle/oracle-bot/` → `pip install -r
+  discord-bot/requirements.txt` in the venv → install both units → `systemctl restart`. `oracle_ids.json`
+  is gitignored-but-required — include it in the tar.
+- **Healthcheck:** `ssh root@149.28.44.118 /opt/nobd-oracle/status.sh` — shows both services'
+  active/enabled/uptime, last 3 log lines each, and today's Oracle question count + $ spent vs the $10 budget.
+- **Persistence:** `oracle_usage.db` (budget/quota/threads) and `roles_msg.json` (dropdown message id) sit
+  in the working dir on the root disk → survive restarts/reboots; the roles bot edits its existing dropdown
+  in place instead of re-posting.
+- **State-only files** (`.env`, `roles.env`, `oracle_usage.db`, `roles_msg.json`, `oracle_ids.json`) are
+  gitignored — never commit them; re-read the on-box copies rather than trusting old transcripts.
+
 ## Scripts (`oracle-bot/discord-setup/`)
 - **`setup_discord.py`** — idempotent server build (roles, categories, channels w/ topics + read-only
   overwrites, server name/desc, pinned welcome/rules/why-nobd copy). Structure is **data at the top**
@@ -82,7 +107,11 @@ the relevant slice per question.
   (both mounted via `github_repository`, code-citable; firmware **prose docs are off-limits** — they carry
   retired claims), and the memory store (`re_kb/*.surql` + RE/render docs + the `nobd/` knowledge).
 - **Credentials:** a **funded** Anthropic API key (the agent runs on it), a GitHub read token for the repo
-  mounts (`gh auth token` works), and the Oracle bot's Discord token.
+  mounts, and the Oracle bot's Discord token. In production these live in the on-box `.env` (see
+  "Deployment"). The GitHub token is currently the operator's **`gh auth token`** (`gho_…`, a non-expiring
+  OAuth token). Both mounted repos are **public**, so a fine-grained PAT scoped to *Public Repositories
+  (read-only)* is the locked-down alternative — but **PATs can only be minted in the browser** (neither
+  `gh` nor the GitHub API can create a fine-grained PAT; the classic-PAT creation API was removed in 2020).
 
 ## Content rules (apply to bot knowledge AND any public post)
 The authoritative ledger is `../nobd-research/01-input-timing/CLAIMS-AUDIT.md` (the nobd-research sibling
@@ -119,8 +148,12 @@ NOBD Zero internals, BOM/pricing/errata, credentials, contractor comms).
   resolution → `--apply`. Verify content against the Content rules first.
 - **Add a channel/role/copy:** prefer editing `setup_discord.py`'s data + re-run (idempotent), or the API
   directly for one-offs.
-- **Restart the Oracle bot:** set its env (Discord token, funded `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`,
-  `ORACLE_CHANNEL_ID`) and run `python bot.py` on a persistent host (PC or the VPS for always-on).
+- **Restart the Oracle bot (production):** `ssh root@149.28.44.118 systemctl restart nobd-oracle`
+  (roles bot: `nobd-roles`). For local/ad-hoc runs, set the env (Discord token, funded
+  `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, `ORACLE_CHANNEL_ID`) and `python bot.py` — but **stop the VPS
+  service first** (one instance per token, else duplicate replies / gateway conflict).
+- **Rotate a secret:** edit the on-box `.env`/`roles.env` (chmod 600) → `systemctl restart` the service.
+  No redeploy needed.
 
 ## How you work
 - For anything that posts publicly: draft → check against Content rules → dry-run → confirm → apply.

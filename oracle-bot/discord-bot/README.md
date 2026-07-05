@@ -4,6 +4,10 @@ Puts the [Managed Agents Oracle](../managed-agent/) in a Discord channel. On `!o
 or an @mention, it opens a session, the agent greps the marvelous2 disassembly + reads the re_kb
 memory store, and it posts a cited answer. Rate-limited per user with a hard daily $ budget.
 
+> **Production:** this bot runs LIVE as the `nobd-oracle` systemd service on the nobd.net VPS
+> (`root@149.28.44.118`, under `/opt/nobd-oracle/`). See [`../deploy/README.md`](../deploy/README.md)
+> for the runbook and `ssh root@149.28.44.118 /opt/nobd-oracle/status.sh` for a health snapshot.
+
 ## Prerequisites
 1. The agent is provisioned (`../managed-agent/provision.py` → `oracle_ids.json` exists).
 2. A Discord **bot application** (recommend a dedicated one, not the NOBD setup bot):
