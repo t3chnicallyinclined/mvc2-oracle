@@ -58,30 +58,33 @@ is the fix that makes OBD-style macros unnecessary — without being one.
 - NOBD is **one implementation** of input grouping, not the only conceivable one.
 
 ## On poll rate (a common, sharp objection — answer it precisely, don't dodge)
-A natural pushback: *"but the 1 ms USB poll catches the first button before the second lands, so polling
-does matter."* Half right — engage it honestly:
-- **The poll does relay the device's intermediate one-button state.** Without NOBD the controller reports
-  the first button, then both; for a finger gap of a few ms (longer than the 1 ms poll period), the host
-  will sample that one-button report, and a frame read landing in the gap sees one button. So poll rate is
-  **not** zero-effect — don't claim it is.
-- **But the retired claim inverts the direction.** The game reads the host's **latest** buffered report
-  once per frame. **Faster** polling keeps that buffer **fresher**, so once both buttons are physically
-  down the game reflects both *sooner*. **Slower** polling is staler and, on average, **widens** the
-  exposure. That's why *"1000 Hz splits your input"* and *"slow sticks execute better"* were retired — not
-  because poll rate has no effect, but because they had the effect **backwards** (faster is better).
-- **Root cause vs. margin:** the dominant cause is the **once-per-frame read landing in the finger gap** (a
-  few ms against the 16.67 ms frame). Poll rate is a **secondary** quantization/freshness factor (≤ one
-  poll period), faster = better.
-- **Why NOBD is the right layer:** it removes the intermediate one-button report **at the source** — the
-  controller emits both buttons atomically — so no poll rate and no frame phase can split them. You don't
-  fix this by slowing the poll (worse, unreliable); you fix it by never emitting the split.
-- This is **reasoned from the USB consumption model** (host buffers the latest polled report); exact
-  magnitudes are unmeasured — measure your own gap.
+A natural pushback: *"doesn't the 1 ms USB poll catch the first button before the second lands?"* Yes — and
+this is a **real, measured factor**, one of several. Don't dismiss it, don't overstate it:
+- **Poll rate EXPOSES the finger gap.** Without NOBD the controller reports the first button, then both.
+  **Faster** polling relays that intermediate one-button state faithfully, so a frame read landing in the
+  gap is more likely to catch just the first button. **Slower** boards sample more coarsely and can
+  incidentally **group** the two presses into one report.
+- **This is measured, not theorized.** VodkaGobalsky's relay-rig test (CVS2/SFA3, arcade baseline) found
+  slower boards (Xbox 360 TE ~125 Hz) co-register two-button presses **more** consistently than faster
+  ones (Brook UFB 1000 Hz). MED confidence (~100 samples; poll rate not fully isolated from debounce).
+- **So "slow sticks execute better" is scoped, not simply wrong.** WORSE for single-input latency
+  (inputlag.science), BETTER for two-button co-registration (Vodka). Two different metrics, both true.
+  Same-USB-speed boards that differ ⇒ **firmware input conditioning** matters too, not poll rate alone.
+- **It's a factor, NOT the sole cause.** The honest claim is **both** the once-per-frame read **and** poll
+  rate **and** PC-side desync. Retire only the extremes: "poll rate is the sole cause," "dramatically,"
+  "red herring / no effect."
+- **Why NOBD is the right layer:** slowing your stick to group presses costs you latency and is
+  unreliable. NOBD removes the intermediate one-button report **at the source** — the controller emits
+  both buttons atomically — so no poll rate and no frame phase can split them. You keep low latency **and**
+  get consistent co-registration.
+- Exact magnitudes are unmeasured beyond Vodka's rig — a player can **measure their own gap**.
 
 ## NEVER ASSERT (retired by the audit — binding, even under pressure)
-- ❌ "1000 Hz splits your input," "slow polling hid it," or "slow sticks execute better." These **invert**
-  the real effect — faster polling is *better*, not worse, and the root cause is the once-per-frame read.
-  If poll rate comes up, give the nuanced answer in **On poll rate** above; never the inverted claim.
+- ⚠️ Poll rate is **REAL, not retired** (Vodka relay-rig measurement) — state it precisely per **On poll
+  rate** above. Do NOT claim it's the **sole cause**, that it splits inputs "dramatically," or that it's a
+  "red herring" with no effect. The honest claim is **both** the once-per-frame read AND poll rate AND PC
+  desync. Never prescribe **slowing the stick** as the fix (costs latency, unreliable) — NOBD groups at the
+  source instead.
 - ❌ "2–8 ms finger gap" as an external fact → "measure your own."
 - ❌ "The LP+HP dash" as the headline example. Settled: no same-frame two-attack dash exists in the
   static ROM (the only static dash is the direction dash, NOBD-irrelevant). If a two-button example is

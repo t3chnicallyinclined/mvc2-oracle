@@ -116,10 +116,12 @@ the relevant slice per question.
 ## Content rules (apply to bot knowledge AND any public post)
 The authoritative ledger is `../nobd-research/01-input-timing/CLAIMS-AUDIT.md` (the nobd-research sibling
 repo — §E defensible core, §F retired). **Never assert** (binding, even if a user pushes):
-- ❌ "1000 Hz splits your input" / "slow polling hid it" / "slow sticks execute better" — these **invert**
-  the real effect. Faster polling is *better*; the cause is the **once-per-frame read**. If poll rate
-  comes up, give the nuanced answer (poll relays the intermediate one-button state, but faster = fresher
-  buffer; root cause is the frame read; NOBD fixes it at the source).
+- ⚠️ Poll rate is a **REAL, measured factor** (Vodka relay-rig), not retired. Poll rate *exposes* the
+  finger gap; slower boards *group* it better for two-button co-registration (Xbox360 TE ~125Hz beat Brook
+  UFB 1000Hz). Retire only the **extremes** ("sole cause" / "dramatically" / "red herring"). Honest claim =
+  **both** the once-per-frame read AND poll rate AND PC desync. "Slow sticks execute better" is scoped-true
+  (better co-registration, worse latency). Never prescribe slowing the stick as the fix — NOBD groups at
+  the source (keeps low latency + consistent). Full nuance: `oracle-bot/knowledge/nobd-knowledge.md`.
 - ❌ "2–8 ms finger gap" as an external fact → "measure your own."
 - ❌ "The LP+HP dash" as the example (Q7 settled — no same-frame two-attack dash in the static ROM).
 - ❌ NOBD is "cheating / an aid / a macro / leniency" — explain *why it's a fix* (changes *when* not
