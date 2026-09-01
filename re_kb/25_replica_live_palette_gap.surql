@@ -1,0 +1,32 @@
+-- ============================================================================
+-- 25: render-replica LIVE — the PVR PALETTE GAP (P1C2 / any post-prefix bank
+-- renders BLACK). The GFX static-gap's twin in the palette domain.
+-- (feat/render-replica-live). Pinned 2026-06-13 from source + _satlive.mcrr.
+-- ============================================================================
+USE NS re DB kb;
+
+UPSERT source:replica_live_pvr_prefix SET kind='code',
+  ref='core/network/maplecast_replica_live.cpp buildPrefixLocked() line ~345',
+  note='pvr_regs[] (0x8000 = 32KB, INCLUDING PALETTE_RAM at pvr_regs+0x1000..0x1FFF = 1024 ARGB entries = 64 banks of 16) is inserted into the static prefix EXACTLY ONCE (p.insert(p.end(), pvr_regs, pvr_regs+pvr_RegSize)). The prefix is built once (_tablesBuilt/_prefixReady one-shot guards), latched, and re-sent verbatim to every connecting client. The per-frame _dynRegs list (slot tables, char structs, objpool, idxtab/rectab, tiledesc, camera) ships NO PVR/palette region — so the palette is shipped once and never again.';
+
+UPSERT source:pvr_palette_ram SET kind='code',
+  ref='core/hw/pvr/pvr_regs.h:502-503 + core/hw/holly/sb_mem.cpp:207 (pvr_WriteReg)',
+  note='PALETTE_RAM = pvr_regs offset 0x1000..0x1FFC (4KB, 1024 u32 ARGB4444 entries). Skin-bank formula bank=16*(char_pair+1)+8*player_side: P1C1=bank16(entry256, off 0x1400), P2C1=bank24(384,0x1600), P1C2=bank32(512, off 0x1800), P2C2=bank40(640), P1C3=bank48(768), P2C3=bank56(896). The GUEST writes each active char s 16-color bank into PALETTE_RAM via pvr_WriteReg at CHARACTER-LOAD time (sb_mem.cpp MMIO path). Mirror path (maplecast_mirror.cpp:333-334) diffs pvr_regs EVERY frame as region 3 -> palette propagates live there; the replica-live path has NO such per-frame PVR diff.';
+
+UPSERT finding:replica_live_palette_gap SET
+  statement='Render-replica LIVE renders a char BLACK when its palette bank was written by the guest AFTER the static prefix was cached. The server ships pvr_regs[] (incl PALETTE_RAM, all 64 banks) STATIC-ONCE in the prefix (buildPrefixLocked); the per-frame read-set ships NO palette. The guest writes each char s palette bank at character-load time. So a tag-in, or a client that connected before that char s art loaded, gets that bank frozen at the prefix snapshot value (zero -> index0=transparent for all -> the body renders all-transparent/black). The client uploads palette from this.pvr (the seed-time prefix snapshot) every frame (Pane.render -> updatePalette), but liveApplyFrame never refreshes this.pvr from the wire, so the frozen bank persists. This is the EXACT twin of finding:replica_live_static_gfx_gap (a shipped-once region going stale) in the palette domain, and timing-dependent: bank 32 (P1C2, entries 512-527, pvr off 0x1800) is FULLY POPULATED (15/16 nonzero, index0=transparent) in _satlive.mcrr because THAT capture s prefix was built after all 6 chars  palettes loaded — confirming the bug is the prefix SNAPSHOT TIMING, not the shipped range (the range is correct).',
+  status='confirmed', confidence='high', date='2026-06-13';
+
+UPSERT finding:replica_live_palette_fix SET
+  statement='FIX (server core/network/maplecast_replica_live.cpp): ship the LIVE 32KB pvr_regs block as an ON-CHANGE dynamic tail, appended AFTER the GFX tail in the FRMx frame record: u32 pvrPalLen ; pvrPalLen bytes of pvr_regs (pvrPalLen=0 in steady state, =pvr_RegSize when changed). The change is detected by a signature pvrPalSig() folding PAL_RAM_CTRL(0x108) + the full 4KB PALETTE_RAM(0x1000..0x1FFF) so a non-palette pvr write does not trigger a reship. Re-ship on new-connect (_pvrPalResend, parallel to _gfxResendAll) so a fresh client gets any post-prefix bank. Wire cost: 32KB raw -> a few KB zstd, ONLY on a palette write (char load / tag-in / skin override); steady-state pvrPalLen=0 (a 4B tail). CLIENT (owned by another agent, one line in replay.html liveApplyFrame): after the GFX tail, read u32 pvrPalLen; if >0, take the next pvrPalLen bytes as the fresh pvr_regs and assign pane.pvr = freshPvr (so the next pane.render -> updatePalette(this.pvr) uploads the fresh banks). render_frame.wasm / body_decoder.mjs / gen_*.c are UNCHANGED. Built (MAPLECAST_HEADLESS=ON) but NOT yet deployed — coordinated deploy pending (user mid-match).',
+  status='proposed', confidence='high', date='2026-06-13';
+
+UPSERT finding:replica_live_palette_build SET
+  statement='BUILT-NOT-DEPLOYED 2026-06-13 on dev box 65.109.77.178 (cmake -DMAPLECAST_HEADLESS=ON, build-headless/). Committed source md5 8b3104be062571d59e34ceb6ec984e9d -> deterministic binary md5 555c74106385714cceb139c4e7b75ec1 (26,203,648 B; reproduced identically across two clean builds). Prod current binary (rollback target) md5 3aecf73b719c4ecb95545418aae6bc57 at /usr/local/bin/flycast, maplecast-headless.service active -> NOT deployed (a restart interrupts the user mid-match; coordinated deploy pending). OFFLINE VALIDATION: ran the rebuilt headless with MAPLECAST_REPLICA_LIVE on dev against the only available savestate (state-replica-kit/mvc2.state) -> that savestate sits at a NON-MATCH screen (instrumented run: in_match=0, ALL palette banks zero incl P1C2[512]=0), so the in-match gate (rd8(0x8C289624)==0 return) never opens and no populated palette could be exercised live. The palette-tail emission path itself is source-correct + the read path was confirmed live (the instrumented build read the exact pvr_regs palette offsets each frame on a connected client). The shipped RANGE is proven correct independently: _satlive.mcrr prefix carries the SAME 32KB pvr_regs block with bank32/P1C2/entries512-527 fully populated (15/16 nonzero) when palettes are loaded. The final live in-match non-zero-tail check (pvrPalLen>0, bank512 nonzero) is deferred to the coordinated deploy where the user is in a real match. Rollback: cp /usr/local/bin/flycast{,.bak-palfix-PREDEPLOY} ; <deploy> ; on regression: systemctl stop maplecast-headless && cp /usr/local/bin/flycast.bak-palfix-PREDEPLOY /usr/local/bin/flycast && systemctl start maplecast-headless.',
+  status='confirmed', confidence='high', date='2026-06-13';
+
+RELATE finding:replica_live_palette_gap->cites->source:replica_live_pvr_prefix;
+RELATE finding:replica_live_palette_gap->cites->source:pvr_palette_ram;
+RELATE finding:replica_live_palette_fix->cites->source:replica_live_pvr_prefix;
+RELATE finding:replica_live_palette_fix->cites->source:pvr_palette_ram;
+RELATE finding:replica_live_palette_build->cites->source:replica_live_pvr_prefix;

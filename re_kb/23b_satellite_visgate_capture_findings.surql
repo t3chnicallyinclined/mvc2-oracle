@@ -1,0 +1,27 @@
+-- ============================================================================
+-- 23b: SATELLITE-WALK INVESTIGATION (2026-06-13) — _satlive.mcrr contains NO
+-- engine-VISIBLE satellites. The satellite part-walk could NOT be diffed vs the
+-- ASMTRACE on this capture because every cat 1..4 pool node fails the engine's own
+-- +0x12C render gate. Root cause of "animations walked wrong" is NOT the part-walk
+-- math; it is upstream (gate/slot-table or capture content). Derived from the
+-- disasm (loc_8c030af8 +0x12C gate) + direct objpool/slot-table scan of _satlive.mcrr
+-- + prod ASMTRACE. Apply:
+--   tools/re_kb/rekb.sh @tools/re_kb/23b_satellite_visgate_capture_findings.surql
+-- ============================================================================
+USE NS re DB kb;
+
+UPSERT source:loc_8c030af8_visgate SET kind='marvelous2',
+  ref='bank03.asm:1538-1552 loc_8c030af8 entry gate',
+  note='loc_8c030af8 (CAT 1..4 satellite setup) GATES on node+0x12C BEFORE any deposit: r0=0x12C; r3=read_u8(node+r0); tst r3,r3; if ZERO -> bra loc_8c030cb8 (epilogue, NO deposit, NO render). Then a second gate read_u8(node+0x3) must be in (0,5). So a satellite renders iff node+0x12C != 0 (the per-frame visibility flag), identical in spirit to loc_8c03093c body gate. Transpiled faithfully in gen_render_satellite.c lines 17-39 (the goto loc_8c030cb8 on +0x12c==0). The shared body walker loc_8c0344d4 then emits parts (ASMTRACE PC 0x8C034864). CONFIRMED in capture: the 2 RENDERED bodies (P2C1 0x8C2688E4 cid23, P1C2 0x8C268E88 cid52) both have +0x12C=1; ALL satellites have +0x12C=0.';
+
+UPSERT source:satlive_mcrr_no_visible_sats SET kind='capture_analysis',
+  ref='_satlive.mcrr (700 frames, vframe 196491..197190) + tools/render-replica-poc/_sat_visgate.mjs / _active_sats.mjs / _find_counted_sats.mjs / _slot_layers.mjs',
+  note='_satlive.mcrr contains NO engine-visible satellite. FACTS (direct scan): (1) 0x8C3496B0 frame_counter is FROZEN at 17854 for all 700 frames — it is NOT in any shipped dyn region, so the documented "sync by 0x8C3496B0" diff method is INAPPLICABLE to this capture (must sync by node identity instead). (2) The slot table (count@0x8C2895E0, ptr@0x8C287DE0) lists ONLY the 2 bodies as COUNTED entries every frame (e.g. L05 count=1 but 13 non-null ptrs: 1 body + 12 STALE leftover satellite ptrs at idx>=count; L06 count=1). (3) The engine slot-walk loc_8c0308c2 (faithfully transpiled in gen_walker_root.c) reads only `count` entries per layer (cmp/ge r3,r14; bf) -> the 12 trailing satellite ptrs are NEVER dispatched. ACROSS ALL 700 FRAMES: counted-in-slot satellite renderings = 0. (4) 30,800 cat 1..4 + g160!=0 pool node-frames exist, but EVERY one has +0x12C==0 AND active byte +0x00==0 -> all would be CULLED by loc_8c030af8 even if dispatched. CONCLUSION: this capture has zero renderable satellites; the satellite part-walk cannot be diffed vs ASMTRACE on it. Cross-check confirmed against prod /dev/shm/mc_assembly.log which DOES carry Sentinel(cid52) pool satellites (90 distinct pool-sat nodes; e.g. node 0c2752e4 frames 200313..200364, masked sid animating 293->302+, effect-range sels 2293-2395/21/724) — proving the ground truth EXISTS, just not in _satlive.mcrr.';
+
+-- ---- AMEND the dispatch finding: the live-satellite ASMTRACE cross-check is STILL OPEN ----
+UPSERT finding:replica_live_satellite_dispatch SET
+  statement='AMENDED 2026-06-13. The transpiled loc_8c030af8 satellite SETUP + the cat!=0 slot-walk routing are in place and validated by BODY-EQUIVALENCE (render the same node as cat==0 vs cat==4 -> 0.0000px through the shared walker) + 9/11 deposit-field bit-identity. BUT the LIVE-SATELLITE ASMTRACE cross-check (diff a REAL engine-rendered satellite\'s per-part walk: count + sel + screenX/Y vs its ASMTRACE lines) is STILL UNVALIDATED. Attempt on _satlive.mcrr FAILED to even exercise the walk: the capture contains NO engine-visible satellite (source:satlive_mcrr_no_visible_sats) — every cat 1..4 pool node has +0x12C==0 (engine render gate OFF, source:loc_8c030af8_visgate) and is positioned in the slot ptr array BEYOND the shipped slot count, so neither the engine nor the faithful client transpile would render it. The user-reported "satellite animations walked wrong" therefore canNOT be reproduced from this capture and is NOT (on this evidence) a bug in gen_render_satellite/gen_walker. TWO upstream candidates remain OPEN: (A) SLOT/GATE SHIPPING — if the live replica stream renders satellites the user sees, they reach the walk via a slot table whose count includes them (or via a non-slot enumeration); a wrong/stale +0x12C or slot-count shipped by the server (maplecast_replica_live.cpp, owned by a separate agent) would make a satellite render at the wrong animation frame (stale objpool +0x144 sid / +0xDC cursor). (B) the OBJS atlas client (web/webgpu/sprite-client.mjs) draws satellites by a DIFFERENT (non-loc_8c030af8) path and may be the actual surface the user saw. RESOLUTION REQUIRES a capture taken WHILE a Sentinel drone/Plasma-Storm is on-screen AND in the slot count (+0x12C!=0, idx<count) — then _diff_sat.mjs (extended to compare COUNT + per-part SEL, not just screenX/Y) gives the part-walk verdict. NO transpile change was made: trace truth shows the walk math is not implicated by available ground truth.',
+  status='open', confidence='high', date='2026-06-13';
+
+RELATE finding:replica_live_satellite_dispatch->cites->source:loc_8c030af8_visgate;
+RELATE finding:replica_live_satellite_dispatch->cites->source:satlive_mcrr_no_visible_sats;

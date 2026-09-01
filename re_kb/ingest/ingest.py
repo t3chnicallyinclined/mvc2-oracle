@@ -16,7 +16,8 @@ Maps the extractor output to the existing 13-node / 12-edge schema:
   docs addresses/offsets  -> address:doc_* / field:doc_* (doc-pinned locations)
   docs canonical offsets  -> MERGE-SAFE cites + doc_refs[] onto field:<canon>
                              (e.g. field:sprite_id keeps its marv note, GAINS a doc cite)
-  docs findings           -> finding:doc_* (status from the doc's confidence cues)
+  docs findings           -> docnote:doc_* (doc_cue from the doc's confidence cues;
+                             deliberately NOT `finding` and NOT `status` -- see gen_docs)
   disc file families      -> dataformat:disc_* + region:disc_devfiles (catalog only)
   disc PLDAT format       -> dataformat:pldat_header / pldat_<section>
                              (GFX1->maps_to->field:gfx00_ptr, about part-decode finding)
@@ -349,12 +350,26 @@ def gen_docs():
         lines.append(f"RELATE {aid}->cites->source:doc_{_slug(a['file'])};")
     lines.append("")
 
-    # ---- findings -> finding records (+ about canonical fields, + cites) ----
+    # ---- doc bullets -> docnote records (+ about canonical fields, + cites) --
+    #
+    # These land in `docnote`, NOT `finding`. A bullet lifted out of a
+    # markdown file is a documented ASSERTION, not a reverse-engineering
+    # result -- and there are ~576 of them against ~230 curated findings, so
+    # putting them in the same table made every aggregate over `finding`
+    # meaningless (measured 2026-09-01: the graph read 529 confirmed : 93
+    # inferred, of which the entire inferred population was machine-generated
+    # and the curated layer had zero).
+    #
+    # The doc's confidence language is kept as `doc_cue`, NOT as `status`.
+    # docs_parse.py maps a literal "OK" checkmark to "confirmed"; that is a
+    # changelog tick, and calling it a status let 478 of them be counted as
+    # confirmed RE knowledge. `status` on a docnote would mean nothing, so
+    # there isn't one.
     for f in rec.get("findings", []):
-        fid = f"finding:doc_{_slug(f['slug'])}"
+        fid = f"docnote:doc_{_slug(f['slug'])}"
         lines.append(
             f"UPSERT {fid} SET statement={S(f['statement'])}, "
-            f"status={S(f['status'])}, confidence='doc', "
+            f"doc_cue={S(f['status'])}, confidence='doc', "
             f"source_file={S(f['file'])}, section={S(f['section'])};")
         lines.append(f"RELATE {fid}->cites->source:doc_{_slug(f['file'])};")
         # link the finding to any canonical field whose offset it names
