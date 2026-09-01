@@ -55,3 +55,34 @@ FOR $p IN $part_of { RELATE ($p.in)->part_of->($p.out); };
 LET $confirms = (SELECT in, out FROM confirms GROUP BY in, out);
 DELETE confirms;
 FOR $p IN $confirms { RELATE ($p.in)->confirms->($p.out); };
+
+-- ---- the epistemics edges (added 2026-09-01) --------------------------------
+-- 77_epistemics.surql DEFINEd supersedes / corrects / fixes -- they had been in
+-- use since June without ever being declared -- but this dedup file was never
+-- extended to cover them. RELATE is not idempotent, so every re-apply of the
+-- seeds multiplied them: measured today, `supersedes` held 181 rows over ~10
+-- distinct pairs (each duplicated 15-18x) and `corrects` held 15 rows over ONE
+-- pair. A traversal then returns the same claim a dozen times and any count
+-- over these edges is meaningless.
+LET $supersedes = (SELECT in, out FROM supersedes GROUP BY in, out);
+DELETE supersedes;
+FOR $p IN $supersedes { RELATE ($p.in)->supersedes->($p.out); };
+
+LET $corrects = (SELECT in, out FROM corrects GROUP BY in, out);
+DELETE corrects;
+FOR $p IN $corrects { RELATE ($p.in)->corrects->($p.out); };
+
+LET $fixes = (SELECT in, out FROM fixes GROUP BY in, out);
+DELETE fixes;
+FOR $p IN $fixes { RELATE ($p.in)->fixes->($p.out); };
+
+-- tried_on carries an OUTCOME on the edge, so two edges between the same pair
+-- are not necessarily duplicates -- an approach can be tried twice with
+-- different results. Dedup on (in, out, outcome), keeping the note and date of
+-- one representative.
+LET $tried_on = (SELECT in, out, outcome, note, date FROM tried_on
+                 GROUP BY in, out, outcome, note, date);
+DELETE tried_on;
+FOR $p IN $tried_on {
+  RELATE ($p.in)->tried_on->($p.out) SET outcome = $p.outcome, note = $p.note, date = $p.date;
+};
