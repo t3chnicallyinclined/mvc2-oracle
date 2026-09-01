@@ -86,12 +86,29 @@ def _q(s):
 
 
 def _rows(res):
-    out = []
+    """Collect result rows, RAISING if any statement failed.
+
+    This used to skip non-OK blocks silently, which made every failure look
+    like an empty result. On 2026-09-01 that turned health() into a liar: its
+    unbacked-claims query hit `string::slice()` on a NULL statement, the whole
+    statement errored, the error was dropped here, and health() reported
+    ZERO confirmed findings without qualifying evidence. The true count was 37.
+
+    A metric that fails open is worse than no metric -- it produces a clean
+    bill of health on demand. So: errors raise.
+    """
+    out, errs = [], []
     for block in res if isinstance(res, list) else []:
-        if isinstance(block, dict) and block.get("status") == "OK":
+        if not isinstance(block, dict):
+            continue
+        if block.get("status") == "OK":
             r = block.get("result")
             if isinstance(r, list):
                 out.extend(r)
+        else:
+            errs.append(str(block.get("result"))[:300])
+    if errs:
+        raise KBError("the graph rejected a statement:\n  " + "\n  ".join(errs))
     return out
 
 
@@ -269,11 +286,20 @@ def health():
     # A cite may land on a source OR on a routine. A routine id IS its PC in
     # the marvelous2 disassembly, so it is code-grade evidence and satisfies
     # the rule. Counting only `source` under-reports compliance badly.
+    # NOTE: no string::slice here. `statement` is NULL on some rows (the claim
+    # lives in `note`), and string::slice(NONE) errors out the whole statement.
+    # Truncation happens in Python, where a missing field is just a missing
+    # field. See _rows() for what that error used to cost.
     unbacked = query(
-        "SELECT id, status, date, string::slice(statement, 0, 110) AS claim "
-        "FROM finding WHERE status='confirmed' "
+        "SELECT id, status, date, statement, note FROM finding "
+        "WHERE status='confirmed' "
         "AND count(->cites->source[WHERE strength IN ['reproduction','code']]) = 0 "
         "AND count(->cites->routine) = 0;")
+    for r in unbacked:
+        claim = r.pop("statement", None) or r.pop("note", None) or ""
+        r.pop("note", None)
+        claim = " ".join(str(claim).split())
+        r["claim"] = claim[:110] + ("…" if len(claim) > 110 else "")
     return {"status_distribution": dist,
             "confirmed_without_qualifying_evidence": unbacked}
 
