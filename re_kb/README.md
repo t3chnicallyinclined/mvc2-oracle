@@ -1,4 +1,20 @@
-# MapleCast RE Knowledge Graph (`re_kb`)
+# MapleCast RE Knowledge Graph (`re_kb`) — **MIRROR**
+
+> **This directory is a MIRROR. The canonical graph lives in
+> [`maplecast-flycast`](https://github.com/t3chnicallyinclined/maplecast-flycast)
+> at `tools/re_kb/`.** Make changes there, then refresh this copy with
+> `./scripts/sync-re-kb.sh` (`--check` reports drift without writing).
+>
+> It is vendored so this toolkit stays standalone — you can clone this repo
+> alone and still query the RE knowledge — but it does NOT lead.
+>
+> It went stale silently once: on 2026-09-01 this directory held 16 of the
+> canonical 89 seed files, frozen at 2026-06-13, while this README claimed to
+> be "the canonical place RE findings live." Every shared file was
+> byte-identical (no fork, ~69 files simply missing) and the numbering jumps
+> 09 → 15 → 18, so nothing about the listing looked wrong. Run the sync check
+> rather than trusting the directory.
+
 
 A living, queryable index of all MVC2 / SH4 reverse-engineering knowledge —
 memory addresses, character data, render routines, data formats, and findings —
@@ -6,8 +22,11 @@ with plain-English `note` fields, correctly linked, fed by the **five-source RE
 workflow** (auto-memory, repo docs/`re-catalog`, anotak, marvelous2 disassembly,
 live Frame Oracle) and UPSERT-updated as new findings land.
 
-**This KB is the canonical place RE findings live and get queried.** Query it
-*before* re-deriving anything; UPSERT into it *after* any new confirmation.
+**The KB is the place RE findings live and get queried** — query it *before*
+re-deriving anything, and record findings *after* any new confirmation.
+Write through `kb.py` (`propose` / `confirm` / `rule_out` / `record_attempt`),
+not raw SQL: `confirm()` requires a reproduction- or code-grade source, which
+is what keeps the graph honest. Write to the CANONICAL copy, then re-sync here.
 
 ---
 

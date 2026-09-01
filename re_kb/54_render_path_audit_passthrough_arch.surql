@@ -1,0 +1,43 @@
+USE NS re DB kb;
+
+-- ============================================================================
+-- 2026-06-29 — DEFINITIVE render-path param-type audit + reconstruct-vs-passthrough
+-- architecture verdict + pt4/pt7 overlay feasibility/bandwidth. Captures _live_fx7
+-- (1320f gameplay+super) + _live_menu (452f pause). Tools: _audit_paramtypes,
+-- _overlay_audit, _overlay_onscreen, _find_fill_poly, _gsta_hudq_fill.mjs.
+-- ============================================================================
+
+UPSERT source:render_path_audit SET kind='measurement',
+  ref='_live_fx7.{gsta.mcrr,mirror.zcst}; _live_menu.*; web/webgpu/{ta-parser,frame-decoder}.mjs (PVR TA param semantics (pcw>>29)&7: 0=EOL 1=UserTileClip 2=ObjListSet 4=Polygon 5=Sprite 7=Vertex); render_frame_node.mjs; maplecast_replica_live.cpp buildPrefixLocked:495 (ships full 8MB VRAM); maplecast_oracle_hook.cpp:3058 collectHudQuads.',
+  note='render_frame reconstructs ONLY pt0(EOL)+pt5(sprite). The engine ALSO emits pt4 Polygon (+pt7 verts, +pt1 tileclip) for STAGE + HUD bars/meter/portraits/names + super-flash + pause menu. pt1 is a CLIP command not geometry; real poly draw = pt4 global + pt7 verts.';
+
+-- THE DEFINITIVE PARAM-TYPE SPLIT (the "what is the right architecture" answer).
+UPSERT finding:render_path_reconstruct_vs_passthrough SET
+  statement='CONFIRMED param-type split. render_frame currently reconstructs pt0+pt5 ONLY (MEASURED fx7: GSTA per-frame = pt0:1 pt5:N; menu = pt0:1 pt5:68). The 7200 mirror real-TA ALSO emits, every frame: pt4 Polygon params (~85-160) + pt7 Vertex params (~2500-2900) + pt1 UserTileClip (~1700, clip rects not geometry) + occasional pt2. So the MISSING render paths in the wire/render_frame = the pt4/pt7 POLYGON list. ARCHITECTURE (HYBRID, correct): KEEP reconstruct-from-state for pt5 sprites (bodies/effects, the high-volume bandwidth win — fx7 peak ~205 sprites/frame). The pt4/pt7 polygons split into TWO classes: (1) STAGE polygons (TCW 0x82c00-0x835c0, world-authored, off-screen guard-band verts) — ALREADY handled separately by gsta_stage.cpp (re_kb/45,/47), do NOT pass through. (2) the ON-SCREEN OVERLAY pt4/pt7 (HUD bars/meter/portraits/names/tag-bars + super-flash dim + pause menu) — the genuinely-missing-or-faked class. This overlay is the unifying gap behind issues 3 (HUD), 5 (super-flash), and 4 (pause menu — CONFIRMED same class: menu mirror = pt4:143 pt7:2672, GSTA drops ALL of it, emits only pt5:68).',
+  status='confirmed', confidence='high', date='2026-06-29';
+
+-- FEASIBILITY + BANDWIDTH verdict (the constraint that re-scopes the fix).
+UPSERT finding:overlay_passthrough_feasibility SET
+  statement='CONFIRMED feasible texture-wise, BUT heavier than expected -> needs delta, not blanket pass-through. FEASIBILITY: the overlay pt4/pt7 polygons reference ONLY (a) resident VRAM textures (HUD/font sheet + portraits) — the static prefix ships the ENTIRE 8MB VRAM (buildPrefixLocked:495) so all match-resident textures incl the HUD sheet are already in the wire — plus (b) PVR palette (shipped) + per-vertex gouraud/flat colors. NO untracked memory. So pass-through renders pixel-faithfully through flycast TA. BANDWIDTH (MEASURED, on-screen-only polys |x|<2000,bbox<400): the on-screen overlay is ~600 polys / avg 92KB peak 129KB UNCOMPRESSED per frame (~30-37KB zstd) — that is the FULL HUD (life/meter/portraits/names/tag-bars + glyphs), NOT a tiny overlay. Blanket pass-through every frame would ~double-to-triple the current ~12KB/frame wire and erode the reconstruct-from-state win. VERDICT: pass-through is the right MECHANISM but must be SCOPED — the HUD is ~99% STATIC frame-to-frame; ship it as a DELTA (only changed polys: the moving fill edge + meter + timer digits) or once+dirty, NOT 600 polys/frame verbatim. Super-flash + menu are bursty/paused (acceptable verbatim during those windows only). re_kb/44 — do not ship unvalidated.',
+  status='confirmed', confidence='high', date='2026-06-29';
+
+-- The HUD moving-fill poly LOCATED (issue 3) — and why the current HUDQ looks static is SKEW not synthesis.
+UPSERT finding:hud_fill_poly_located SET
+  statement='CONFIRMED + CORRECTS the earlier "we synthesize a fake static bar" hypothesis. The engine HUD depleting life-bar IS a real pt4 OPAQUE polygon, TCW=0x9be00, whose RIGHT EDGE tracks current HP: MEASURED in the mirror real-TA the P2 bar poly (left edge x~438.8, cy~74-103) spans x[438.8..592.5] (w=153.7) at p2hp=140 (fnum=79) and SHRINKS to x[438.8..440.5] (w=1.7, Δ-152px) at p2hp=55 (fnum=396) — the moving fill. CRITICAL: the GSTA HUDQ collector (maplecast_oracle_hook.cpp:3058, which DOES capture non-sprite polys with 4 corners) IS capturing this 0x9be00 poly (present at the right tcw/positions in our HUDQ tail) — but at the GSTA-side frame the captured maxx stays ~592 (full) even when the equivalently-indexed mirror frame shows 440.5 (shrunk). So the HUD is NOT a synthesized fake track — the mechanism captures the REAL engine poly; the fill-static SYMPTOM is GSTA-vs-mirror frame SKEW (drift) OR a capture-PASS timing issue (the HUDQ is collected at the HUD/composite pass; re_kb/50 showed body/idxtab state is pass-transient — the bar fill poly may be captured a frame stale). This CANNOT be resolved from the drifting fx7 captures (no coincident frame); it NEEDS the frame-exact RAM+TA dump (DUMP_RAM trigger armed) to A/B the GSTA HUDQ bar vs the engine TA on the SAME frame -> determine skew (data-pipeline timing fix) vs a real capture-pass-staleness fix. DO NOT change the HUDQ filter blind (re_kb/44).',
+  status='confirmed', confidence='high', date='2026-06-29';
+
+-- CORRECTED ARCHITECTURE VERDICT: reconstruct-from-state for the overlays too (zero bytes).
+-- The pass-through bandwidth measurement (overlay ~92KB/frame) PLUS the discovery that the
+-- overlays are simple deterministic UI from state WE ALREADY SHIP => reconstruct, do NOT pass through.
+UPSERT finding:overlays_are_reconstructable_zero_bw SET
+  statement='CONFIRMED — reconstruct-from-state wins for all three overlay gaps; pass-through REJECTED on bandwidth (the overlay is ~600 polys/92KB/frame, would erode the GSTA win). PER GAP: (1) ISSUE 3 HUD bars/meter — ALREADY reconstructable + ALREADY BUILT, zero added bytes. The state (per-slot health 0x420, red_health 0x424, active 0x000, char_id 0x001; meter_fill 0x8C289646/648, lvl 0x8C28964A/64B, timer 0x630, combo 0x670) is ALL in the shipped read-set. web/render-replica/hud-client.mjs renderTagLifeBars + _lifeBar compute hpFrac=health/144 every frame with ROM bar colors (BAR_COLS from loc_8c15FFB0) + red_health chip — a correct health-TRACKING bar. ROOT CAUSE of the static-bar symptom: replay.html renderHudPass():1621 SUPPRESSES this procedural reconstruction whenever the HUDQ tail is present (renderHudQuads() returns true) and draws the engine HUDQ quads instead — and those HUDQ quads are the fill-static/skewed ones (finding:hud_fill_poly_located). FIX = precedence flip: prefer the zero-byte state-reconstructed bar over the HUDQ pass-through for the life/meter bars (keep HUDQ only for elements not state-derivable, if any). NOT a new mechanism. (2) ISSUE 5 super-flash — there is NO engine fullscreen flash/dim quad: MEASURED across super frames 331/495/520/551/560/991/1040/1057 AND normal controls, ZERO on-screen fullscreen quad in the mirror real-TA (the large super-frame polys are all tcw=0x9fc00 STAGE geometry in the guard-band, off-screen coords). So bigwhite.png is NOT a missing flash overlay — it is OUR OWN reconstruction garbling during the super (mis-rendered stage/bodies). It is a reconstruction-correctness bug in paths we already have (gsta_stage.cpp + render_frame), same drift-limited class as issue 1a -> needs the frame-exact RAM dump to debug, NOT a flash render path. (3) ISSUE 4 menu — same polygon class as the HUD; paused-only so bandwidth is moot, reconstruct from menu state preferred. CONCLUSION: no gap requires pass-through; none escalated.',
+  status='confirmed', confidence='high', date='2026-06-29';
+
+RELATE finding:overlays_are_reconstructable_zero_bw->cites->source:render_path_audit;
+RELATE finding:overlays_are_reconstructable_zero_bw->about->finding:render_path_reconstruct_vs_passthrough;
+RELATE finding:render_path_reconstruct_vs_passthrough->cites->source:render_path_audit;
+RELATE finding:overlay_passthrough_feasibility->cites->source:render_path_audit;
+RELATE finding:hud_fill_poly_located->cites->source:render_path_audit;
+RELATE finding:overlay_passthrough_feasibility->about->finding:render_path_reconstruct_vs_passthrough;
+RELATE finding:hud_fill_poly_located->about->finding:gsta_hud_fill_static_confirmed;
+RELATE finding:render_path_reconstruct_vs_passthrough->about->finding:gsta_super_flash_paramtype_gap;
