@@ -132,7 +132,8 @@ in the PLDAT — matches our empirical per-char catalog, which stays the source 
 Read-only RAM reads + client rendering → **no byte-perfect-determinism exposure** for items 0–3 &
 5 (only the GSTA *write* path would matter, untouched). Item 4 is the one "update all four
 parsers together" wire bump (CLAUDE.md). Deploy via `deploy-headless.sh` / `deploy-web.sh` only
-(backups); prod box is `your.server.example` (per memory), verify before deploy.
+(backups); prod box is **the-server `your.server.example`** (`ubuntu@`, key `~/.ssh/deploy_key`)
+since the 2026-09-01 cutover. Architecture SSOT: a-private-repo `an internal handover note` section 0 (copy `~/HANDOVER.md` on the-server).
 
 | # | Change | Files / functions | Effort | Risk |
 |---|---|---|---|---|

@@ -6,7 +6,12 @@ never in git, never on a command line.
 - **`nobd-oracle`** — the MvC2 Oracle Q&A bot (`bot.py`)
 - **`nobd-roles`** — the console-role dropdown bot (`roles_bot.py`)
 
-> **Production host: `user@your.server.example`** (nobd.net). The old `your.server.example` was **decommissioned
+> **Production host: `user@your.server.example`** = **the-server** (the hosting provider RISE, North America), which has
+> served `nobd.net` since the 2026-09-01 cutover. Log in as `ubuntu` (sudo, key
+> `~/.ssh/deploy_key`) — **there is no root login on the-server**, so prefix privileged commands
+> with `sudo`. Both bots run there as `nobd-oracle` / `nobd-roles` under `/opt/nobd-oracle/`.
+> Previous hosts, do NOT deploy to them: `your.server.example` (the hosting provider, served nobd.net until
+> 2026-09-01; still powered on) and `your.server.example` (**decommissioned
 > 2026-04-15** — do not use it (and note `deploy.sh`'s historical default pointed there).
 > **Status: both services are already deployed and live** (since 2026-07-05). This is a redeploy/reference
 > runbook, not a from-scratch requirement.
@@ -20,12 +25,14 @@ tar -czf /tmp/oracle-bot.tgz \
   --exclude='roles_msg.json' --exclude='discord-setup/.env' \
   --exclude='discord-bot/.env' --exclude='discord-bot/roles.env' oracle-bot
 scp /tmp/oracle-bot.tgz user@your.server.example:/tmp/
-ssh user@your.server.example 'D=/opt/nobd-oracle; mkdir -p $D; tar -xzf /tmp/oracle-bot.tgz -C $D;
+# the-server: /opt/nobd-oracle is root-owned and there is no root login, so the remote half runs
+# under sudo (ubuntu has sudo).
+ssh user@your.server.example 'sudo bash -c '"'"'D=/opt/nobd-oracle; mkdir -p $D; tar -xzf /tmp/oracle-bot.tgz -C $D;
   [ -d $D/venv ] || python3 -m venv $D/venv;              # needs python3.12-venv pkg
   $D/venv/bin/pip -q install -r $D/oracle-bot/discord-bot/requirements.txt;
   install -m644 $D/oracle-bot/deploy/nobd-oracle.service /etc/systemd/system/;
   install -m644 $D/oracle-bot/deploy/nobd-roles.service  /etc/systemd/system/;
-  systemctl daemon-reload; systemctl restart nobd-oracle nobd-roles'
+  systemctl daemon-reload; systemctl restart nobd-oracle nobd-roles'"'"''
 ```
 `oracle_ids.json` is gitignored-but-required at runtime — the tar above includes it (only `.env`-type and
 runtime-state files are excluded).
@@ -37,15 +44,15 @@ bash oracle-bot/deploy/deploy.sh user@your.server.example
 - **First run** copies `.env.example`/`roles.env.example` → the VPS and stops. Fill the secrets, then start:
   ```bash
   ssh user@your.server.example
-  nano /opt/nobd-oracle/oracle-bot/discord-bot/.env      # Oracle: DISCORD_BOT_TOKEN, ANTHROPIC_API_KEY, GITHUB_TOKEN
-  nano /opt/nobd-oracle/oracle-bot/discord-bot/roles.env # Roles: DISCORD_BOT_TOKEN (NOBD admin) + guild/channel ids
-  systemctl enable --now nobd-oracle nobd-roles
+  sudo nano /opt/nobd-oracle/oracle-bot/discord-bot/.env      # Oracle: DISCORD_BOT_TOKEN, ANTHROPIC_API_KEY, GITHUB_TOKEN
+  sudo nano /opt/nobd-oracle/oracle-bot/discord-bot/roles.env # Roles: DISCORD_BOT_TOKEN (NOBD admin) + guild/channel ids
+  sudo systemctl enable --now nobd-oracle nobd-roles
   ```
 - **Later runs** sync the code and `systemctl restart` both automatically.
 
 ## Healthcheck
 ```bash
-ssh user@your.server.example /opt/nobd-oracle/status.sh
+ssh user@your.server.example /opt/nobd-oracle/status.sh   # no sudo needed (verified 2026-09-02)
 ```
 Shows both services' active/enabled/uptime, last 3 log lines each, and today's Oracle question count +
 $ spent vs the $10/day budget.
@@ -59,9 +66,9 @@ $ spent vs the $10/day budget.
 
 ## Logs / control
 ```bash
-ssh user@your.server.example journalctl -u nobd-oracle -f     # live logs ("Oracle bot online …")
-ssh user@your.server.example journalctl -u nobd-roles -f      # roles bot
-ssh user@your.server.example systemctl restart nobd-oracle nobd-roles
+ssh user@your.server.example sudo journalctl -u nobd-oracle -f     # live logs ("Oracle bot online …")
+ssh user@your.server.example sudo journalctl -u nobd-roles -f      # roles bot
+ssh user@your.server.example sudo systemctl restart nobd-oracle nobd-roles
 ```
 
 ## Notes

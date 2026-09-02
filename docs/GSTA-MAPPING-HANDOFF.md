@@ -130,7 +130,8 @@ In priority order (from [MARVELOUS2-RE-HANDOFF.md §5](MARVELOUS2-RE-HANDOFF.md)
 
 **Constraints:** items 1–2 are read-only/client → no determinism risk. Item 3's wire bump is the
 only "all parsers together" landmine. Run `MAPLECAST_DUMP_TA=1` once at phase end. Deploy via
-`deploy-headless.sh` / `deploy-web.sh` only (backups); prod box `your.server.example`.
+`deploy-headless.sh` / `deploy-web.sh` only (backups); prod box **the-server `your.server.example`**
+(`ubuntu@`, key `~/.ssh/deploy_key`) since 2026-09-01. Architecture SSOT: a-private-repo `an internal handover note` section 0 (copy `~/HANDOVER.md` on the-server).
 
 ---
 
