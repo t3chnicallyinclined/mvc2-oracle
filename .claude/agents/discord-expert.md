@@ -52,8 +52,12 @@ Each bot has its own token (env `DISCORD_BOT_TOKEN`). Use the **setup bot** for 
 ## Deployment (production) — both bots are LIVE on the nobd.net VPS
 As of **2026-07-05** both bots run 24/7 as **systemd services** on the production VPS, not from anyone's
 terminal. This is the source of truth — verify with the healthcheck rather than assuming.
-- **Host:** `root@149.28.44.118` (nobd.net; interactive root SSH key is authorized). **The old
-  `66.55.128.93` was DECOMMISSIONED 2026-04-15** — `deploy.sh`'s historical default pointed there; ignore it.
+- **Host:** **rise3** `ubuntu@15.204.141.58` (OVH RISE, North America) — serves `nobd.net`
+  since the 2026-09-01 cutover. Key `~/.ssh/ovh_maplecast`, passwordless sudo, **no root
+  login** (prefix privileged commands with `sudo`). Previous hosts, do NOT deploy to them:
+  `149.28.44.118` (Vultr, served nobd.net until 2026-09-01; still powered on, no longer the
+  origin) and `66.55.128.93` (DECOMMISSIONED 2026-04-15).
+  Server architecture SSOT: forgily-creations `plans/rise3_handover.md` section 0 (copy `~/HANDOVER.md` on rise3) — do not restate box facts here.
 - **Co-tenant:** the box also runs the **maplecast** stack (flycast/relay/hub/SurrealDB). The bots are
   fully isolated under **`/opt/nobd-oracle/`** — never touch the maplecast units/paths, and vice-versa.
 - **Services:** `nobd-oracle.service` (Q&A bot, `bot.py`) and `nobd-roles.service` (console-role dropdown
@@ -66,7 +70,7 @@ terminal. This is the source of truth — verify with the healthcheck rather tha
   `roles_msg.json`) → `scp` → extract to `/opt/nobd-oracle/oracle-bot/` → `pip install -r
   discord-bot/requirements.txt` in the venv → install both units → `systemctl restart`. `oracle_ids.json`
   is gitignored-but-required — include it in the tar.
-- **Healthcheck:** `ssh root@149.28.44.118 /opt/nobd-oracle/status.sh` — shows both services'
+- **Healthcheck:** `ssh ubuntu@15.204.141.58 /opt/nobd-oracle/status.sh` — shows both services'
   active/enabled/uptime, last 3 log lines each, and today's Oracle question count + $ spent vs the $10 budget.
 - **Persistence:** `oracle_usage.db` (budget/quota/threads) and `roles_msg.json` (dropdown message id) sit
   in the working dir on the root disk → survive restarts/reboots; the roles bot edits its existing dropdown
@@ -150,7 +154,7 @@ NOBD Zero internals, BOM/pricing/errata, credentials, contractor comms).
   resolution → `--apply`. Verify content against the Content rules first.
 - **Add a channel/role/copy:** prefer editing `setup_discord.py`'s data + re-run (idempotent), or the API
   directly for one-offs.
-- **Restart the Oracle bot (production):** `ssh root@149.28.44.118 systemctl restart nobd-oracle`
+- **Restart the Oracle bot (production):** `ssh ubuntu@15.204.141.58 sudo systemctl restart nobd-oracle`
   (roles bot: `nobd-roles`). For local/ad-hoc runs, set the env (Discord token, funded
   `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, `ORACLE_CHANNEL_ID`) and `python bot.py` — but **stop the VPS
   service first** (one instance per token, else duplicate replies / gateway conflict).

@@ -130,7 +130,8 @@ In priority order (from [MARVELOUS2-RE-HANDOFF.md §5](MARVELOUS2-RE-HANDOFF.md)
 
 **Constraints:** items 1–2 are read-only/client → no determinism risk. Item 3's wire bump is the
 only "all parsers together" landmine. Run `MAPLECAST_DUMP_TA=1` once at phase end. Deploy via
-`deploy-headless.sh` / `deploy-web.sh` only (backups); prod box `149.28.44.118`.
+`deploy-headless.sh` / `deploy-web.sh` only (backups); prod box **rise3 `15.204.141.58`**
+(`ubuntu@`, key `~/.ssh/ovh_maplecast`) since 2026-09-01. Architecture SSOT: forgily-creations `plans/rise3_handover.md` section 0 (copy `~/HANDOVER.md` on rise3).
 
 ---
 

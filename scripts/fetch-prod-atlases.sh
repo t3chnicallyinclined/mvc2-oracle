@@ -8,7 +8,7 @@
 #   ./scripts/fetch-prod-atlases.sh PL2C PL34       # specific chars (Magneto, Sentinel)
 #   MC_PROD=root@HOST ./scripts/fetch-prod-atlases.sh all   # whole roster
 set -euo pipefail
-HOST="${MC_PROD:-root@149.28.44.118}"
+HOST="${MC_PROD:-ubuntu@15.204.141.58}"   # rise3 (prod since 2026-09-01)
 SRC="/var/www/maplecast/test-atlas/chars"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; DST="$ROOT/web/test-atlas/chars"
 mkdir -p "$DST"

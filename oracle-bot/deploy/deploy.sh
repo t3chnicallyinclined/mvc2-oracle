@@ -4,28 +4,31 @@
 #   - nobd-roles  : the console-role dropdown bot (roles_bot.py)
 # Run from your machine — it needs WORKING SSH to the host (your interactive key).
 #
-#   bash oracle-bot/deploy/deploy.sh [user@host]      # default: root@149.28.44.118 (nobd.net prod)
+#   bash oracle-bot/deploy/deploy.sh [user@host]      # default: ubuntu@15.204.141.58 (rise3, nobd.net prod)
 #
 # NOTE: needs rsync, which the Windows dev box lacks — see deploy/README.md for the tar+scp path.
-# The old 66.55.128.93 host was decommissioned 2026-04-15; current prod is 149.28.44.118.
+# Prod moved 66.55.128.93 -> 149.28.44.118 -> rise3 15.204.141.58 (cut over 2026-09-01).
+# rise3 has NO root login: log in as ubuntu and sudo. Both older hosts are retired.
 # First run: copies a .env template per service to the VPS and stops — fill the secrets there, then
 # `systemctl enable --now <service>`. Subsequent runs: sync code + restart both services.
 set -euo pipefail
-VPS="${1:-root@149.28.44.118}"
+VPS="${1:-ubuntu@15.204.141.58}"
 DEST="/opt/nobd-oracle"
 BOT="$(cd "$(dirname "$0")/.." && pwd)"   # the oracle-bot/ dir
 
 echo "==> syncing oracle-bot → $VPS:$DEST/oracle-bot"
 # Includes the gitignored-but-required oracle_ids.json; excludes caches, runtime state, and any
 # LOCAL secret files (the VPS gets its own .env / roles.env, filled on the box).
-rsync -az --delete \
+# rise3 has no root login and /opt/nobd-oracle is root-owned, so the remote side runs under
+# sudo (--rsync-path + `sudo bash -s`). ubuntu@rise3 has passwordless sudo.
+rsync -az --delete --rsync-path="sudo rsync" \
   --exclude '__pycache__' --exclude '*.pyc' \
   --exclude 'oracle_usage.db' --exclude 'roles_msg.json' \
   --exclude 'discord-bot/.env' --exclude 'discord-bot/roles.env' --exclude 'discord-setup/.env' \
   "$BOT/" "$VPS:$DEST/oracle-bot/"
 
 echo "==> remote: venv + deps + systemd units"
-ssh "$VPS" "DEST='$DEST' bash -s" <<'REMOTE'
+ssh "$VPS" "DEST='$DEST' sudo -E bash -s" <<'REMOTE'
 set -euo pipefail
 [ -d "$DEST/venv" ] || python3 -m venv "$DEST/venv"
 "$DEST/venv/bin/pip" -q install --upgrade pip
@@ -49,4 +52,4 @@ setup_service nobd-oracle "$DEST/oracle-bot/discord-bot/.env"      "$DEST/oracle
 setup_service nobd-roles  "$DEST/oracle-bot/discord-bot/roles.env" "$DEST/oracle-bot/deploy/roles.env.example" "DISCORD_BOT_TOKEN=NOBD (admin) bot"
 [ "$first_run" = 1 ] && { echo; echo "First run: fill the env file(s) above, then enable each service."; }
 REMOTE
-echo "==> done.  Logs:  ssh $VPS journalctl -u nobd-oracle -u nobd-roles -f"
+echo "==> done.  Logs:  ssh $VPS sudo journalctl -u nobd-oracle -u nobd-roles -f"

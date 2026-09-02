@@ -456,7 +456,7 @@ populated once a character's DAT has loaded). The probe is **read-only and one-s
 fires the first in-match frame after the directory is built, then disables itself.
 
 **On the box (build is `cmake --build build-headless --target flycast`, deploy is**
-**`scp build-headless/flycast root@149.28.44.118:/usr/local/bin/flycast` — COORDINATE deploys):**
+**`scp build-headless/flycast ubuntu@15.204.141.58:/home/ubuntu/src/maplecast-flycast/build-headless/flycast` — rise3, COORDINATE deploys):**
 
 ```bash
 # 1. Enable the probe via env on the headless service.

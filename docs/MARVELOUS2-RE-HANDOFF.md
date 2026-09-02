@@ -132,7 +132,8 @@ in the PLDAT — matches our empirical per-char catalog, which stays the source 
 Read-only RAM reads + client rendering → **no byte-perfect-determinism exposure** for items 0–3 &
 5 (only the GSTA *write* path would matter, untouched). Item 4 is the one "update all four
 parsers together" wire bump (CLAUDE.md). Deploy via `deploy-headless.sh` / `deploy-web.sh` only
-(backups); prod box is `149.28.44.118` (per memory), verify before deploy.
+(backups); prod box is **rise3 `15.204.141.58`** (`ubuntu@`, key `~/.ssh/ovh_maplecast`)
+since the 2026-09-01 cutover. Architecture SSOT: forgily-creations `plans/rise3_handover.md` section 0 (copy `~/HANDOVER.md` on rise3).
 
 | # | Change | Files / functions | Effort | Risk |
 |---|---|---|---|---|
