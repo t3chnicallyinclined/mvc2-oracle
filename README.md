@@ -4,7 +4,9 @@ A standalone toolkit + live dashboard for **reverse-engineering Marvel vs Capcom
 Sega Naomi / Dreamcast (SH4). It bundles the Oracle hook (a READ-ONLY JIT probe into flycast),
 the RE knowledge graph, the decode/rip tools, and a frame-by-frame visual RE dashboard.
 
-> **You bring your own ROM.** Nothing ROM-derived ships in this repo. Point the setup at your own
+> **You bring your own ROM.** No ROM images, sprite pixels or audio ship in this repo (`web/anim/` and
+> `re_kb/ingest/generated/` carry animation-table numbers and character stats from the community
+> anotak corpus). Point the setup at your own
 > legally-owned MVC2 image and it pulls everything it needs — decoded sprites, parts, palettes,
 > the assembly recipe — into your local (gitignored) `assets/`. See **Bring your own ROM** below.
 
@@ -15,10 +17,10 @@ the RE knowledge graph, the decode/rip tools, and a frame-by-frame visual RE das
 | Dir | What |
 |-----|------|
 | `extern/flycast/` | flycast emulator — **git submodule**, pinned to the MapleCast fork (x64). |
-| `hook/` | The Oracle hook (`maplecast_oracle_hook.*`) — tracked here, applied into the submodule. |
-| `patch/` | The two dynarec injection edits (`rec_x64.cpp`, `decoder.cpp`) as a patch set. |
+| `hook/` | Notes on the Oracle hook (`maplecast_oracle_hook.*`). The source lives in the submodule. |
+| `patch/` | Notes on the two dynarec injection edits (`rec_x64.cpp`, `decoder.cpp`), which are already in the submodule. |
 | `scripts/` | `apply-hook.sh`, `build-headless.sh`, `setup-from-rom.sh`, `capture.sh`, `oracle-tail-ws.py`. |
-| `re_kb/` | The RE knowledge graph (SurrealDB seeds + `rekb.sh` + the cached anotak corpus). |
+| `re_kb/` | The RE knowledge graph (SurrealDB seeds + `rekb.sh`; the anotak pages are fetched by `re_kb/ingest/anotak_crawl.py`, not stored here). |
 | `tools/` | The decode/rip/validate tools + the SH4→C transpiler harness (`render-replica-poc/`). |
 | `web/` | The **dashboard** (`dashboard.html` + `panels/`) and the reused renderers (`webgpu/`). |
 | `docs/` | The RE knowledge (memory map, GFX notes, Frame-Oracle spec, `re-catalog/`). |
@@ -40,14 +42,18 @@ The hook is a compile-time block-entry `GenCall` injected into flycast's x64 dyn
 | Frame Oracle | `MAPLECAST_FRAME_ORACLE_HOOK` | `0x8C03093C`/`0x8C030AF8` | `mc_oracle_hook.jsonl` | per-frame per-object screen anchors + objects + blend |
 | Generic probe | `MAPLECAST_ORACLE_PROBE` | up to 16 PCs, **live-reloadable** | `mc_probe.log` | config-driven register/RAM reads with **no rebuild** |
 
-ASMTRACE is the headline. It confirmed the emitter render model; it's the per-part truth the
-dashboard's DIFF overlay and `tools/validate_emitter_geom.py` measure against.
+ASMTRACE is the headline: the engine's own per-part pen and screen position. `tools/oracle_query.py`
+reads it. (`tools/validate_emitter_geom.py` checks geometry against a CHARQ capture, which is not
+shipped; see `docs/FLOORPLAN.md` for what each check compares.)
 
 ---
 
 ## Quickstart
 
 ### Path A — no emulator (see something in 60 seconds)
+> **Status: planned.** Today `dashboard.html` runs on a synthetic demo feed, with pause and step. The
+> capture loader and the DIFF / WATCH / ASMTRACE overlays described below are not built yet.
+
 The dashboard runs against a **recorded capture** (a `.bin` carrying TA frames + GSTA/OBJS/WATCH +
 an ASMTRACE slice). A capture is ROM-derived (gitignored), so it's hand-delivered, not committed.
 ```bash
@@ -57,6 +63,8 @@ cd web && python3 -m http.server
 ```
 
 ### Path A2 — Real sprites, fast (fetch decoded atlases from prod)
+> **Maintainers only.** This needs SSH access to the project's own server.
+
 The full roster was baked offline-from-disc and lives on prod. Pull the decoded atlases (READ-ONLY,
 gitignored, never committed) and the dashboard renders real animated sprites — no local decode:
 ```bash
@@ -81,7 +89,8 @@ tail -f /dev/shm/mc_assembly.log
 ```
 
 `setup-from-rom.sh` refuses to run if `$MVC2_ROM` points inside the repo, and writes only into the
-gitignored `assets/` and `captures/`. Nothing ROM-derived is ever staged for commit.
+gitignored `assets/` and `captures/`. Today it builds the emulator; its decode, seed and capture steps
+are placeholders.
 
 ---
 

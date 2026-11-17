@@ -1,5 +1,9 @@
 # hook/ — the Oracle hook (tracked here, applied into the flycast submodule)
 
+> **Note.** Nothing is copied or applied today. The pinned submodule already carries the hook, and
+> `scripts/apply-hook.sh` only verifies that. This file describes the hook for a future standalone
+> extraction.
+
 Phase 1 copies these from the MapleCast fork's `core/network/`:
 - `maplecast_oracle_hook.cpp` / `.h` — the block-entry handler `mc_oracle_blockEntry(pc)`, the probe
   family (ASMTRACE, BODYCAP, CHARQ, Frame Oracle, generic `MAPLECAST_ORACLE_PROBE`), `mc_isHookedPC`,
