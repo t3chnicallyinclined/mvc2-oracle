@@ -1,5 +1,8 @@
 # patch/ — flycast dynarec injection (applied into the submodule)
 
+> **Note.** There is no `0001` patch file here. The two edits below are already in the pinned
+> submodule, and `scripts/apply-hook.sh` only verifies them.
+
 `0001-oracle-hook-injection.patch` (Phase 1) carries the two small edits that turn the tracked
 `hook/` module into a live hook. Generate it from the fork:
 
